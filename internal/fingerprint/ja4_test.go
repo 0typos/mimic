@@ -65,6 +65,23 @@ func TestParseClientHelloAcrossTLSRecords(t *testing.T) {
 	}
 }
 
+func TestExtractClientHelloNormalizesRecordAndTrailingData(t *testing.T) {
+	fixture := loadFixture(t)
+	record := append(fixtureRecord(t, fixture), 23, 3, 3, 0, 0)
+	want := fixtureRecord(t, fixture)[5:]
+	got, err := ExtractClientHello(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(want) {
+		t.Fatalf("normalized ClientHello differs: got %d bytes, want %d", len(got), len(want))
+	}
+	got[0] = 2
+	if want[0] != 1 {
+		t.Fatal("ExtractClientHello returned aliased storage")
+	}
+}
+
 func TestParseRejectsMalformedClientHello(t *testing.T) {
 	for _, raw := range [][]byte{
 		nil,

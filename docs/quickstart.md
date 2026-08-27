@@ -43,7 +43,7 @@ to report healthy. It does not contact a test target or trust a CA globally.
 
 The three checks show:
 
-1. `mimic probe` reports `PASS` because the emitted Chrome 133 ClientHello
+1. `mimic probe` reports `PASS` because the emitted Chrome 152 ClientHello
    matches the profile's expected JA4.
 2. A plaintext request through the forward proxy reaches the origin with the
    profile's Chrome `User-Agent`.

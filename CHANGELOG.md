@@ -26,3 +26,11 @@ Semantic Versioning once public tags begin.
   paths, live control, Burp, and Caido.
 - A locked PEP 723 `uv` launcher for running or installing the tutorial lab
   without manually managing a Python environment.
+- A 10-profile lifecycle-labeled catalog with real Chrome 152, Chromium 151,
+  Edge 151, Firefox 154, and Firefox 153 ESR Linux captures; Chrome 152 is the
+  new default and the former preset-backed catalog remains labeled legacy.
+- `mimic profiles` catalog inspection plus `mimic profile capture` and
+  `mimic profile import` workflows for TCP/Unix live capture, raw or hexadecimal
+  ClientHello files, PCAP, and PCAPNG.
+- Auditable built-in capture provenance, profile refresh policy, generated
+  metadata validation, and conformance tests for every emitted built-in JA4.

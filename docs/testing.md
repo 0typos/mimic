@@ -44,7 +44,8 @@ Unix-socket listener, live log-level/profile evidence, and daemon counters. The
 The Go suite includes:
 
 - strict TOML/default/path and invalid-relationship tests;
-- profile registry and malformed captured-ClientHello tests;
+- profile registry, metadata, generated TOML, live Unix-socket capture,
+  raw/hex import, PCAP/PCAPNG reassembly, and malformed capture tests;
 - FoxIO JA4 reference-vector, parser, GREASE, and ALPN edge-case tests;
 - emitted-ClientHello capture and golden JA4 checks for every built-in profile;
 - CA generation, permissions, loading, and leaf issuance;
@@ -75,6 +76,8 @@ Before tagging:
 4. Exercise Burp interception with a temporary CA.
 5. Run `mimic probe` for every bundled profile, then independently compare the
    traffic against a controlled JA4/JA4H sensor.
-6. Verify release archive checksums on a separate host.
-7. Extract one release archive on a Docker host and complete the five-minute
+6. Recalculate every fixture hash in `docs/profile-captures.md` and confirm
+   current profile source versions have not been silently replaced upstream.
+7. Verify release archive checksums on a separate host.
+8. Extract one release archive on a Docker host and complete the five-minute
    quickstart from the packaged `lab/` directory.

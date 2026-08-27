@@ -76,6 +76,12 @@ type Profile struct {
 	ClientHelloFile string            `toml:"client_hello_file"`
 	JA4             string            `toml:"ja4"`
 	JA4H            string            `toml:"ja4h"`
+	Browser         string            `toml:"browser"`
+	BrowserVersion  string            `toml:"browser_version"`
+	Platform        string            `toml:"platform"`
+	Lifecycle       string            `toml:"lifecycle"`
+	Source          string            `toml:"source"`
+	CapturedAt      string            `toml:"captured_at"`
 	UserAgent       string            `toml:"user_agent"`
 	HeaderOrder     []string          `toml:"header_order"`
 	Headers         map[string]string `toml:"headers"`
@@ -96,7 +102,7 @@ func Defaults() Config {
 		Control: Control{Listen: "unix:///tmp/mimic/control.sock"},
 		Logging: Logging{Level: "info", Format: "text"},
 		Runtime: Runtime{
-			DefaultProfile:   "chrome-133",
+			DefaultProfile:   "chrome-152-linux",
 			ConnectTimeout:   "10s",
 			HandshakeTimeout: "15s",
 		},
@@ -281,6 +287,22 @@ func (c Config) Validate() error {
 				errs = append(errs, fmt.Errorf("profiles.%s.ja4: %w", name, err))
 			} else if p.JA4[0] != 't' {
 				errs = append(errs, fmt.Errorf("profiles.%s.ja4 must describe TLS over TCP", name))
+			}
+		}
+		if p.Lifecycle != "" && p.Lifecycle != "current" && p.Lifecycle != "legacy" && p.Lifecycle != "custom" {
+			errs = append(errs, fmt.Errorf("profiles.%s.lifecycle must be current, legacy, or custom", name))
+		}
+		if p.CapturedAt != "" {
+			if _, err := time.Parse(time.RFC3339, p.CapturedAt); err != nil {
+				errs = append(errs, fmt.Errorf("profiles.%s.captured_at must be RFC3339: %w", name, err))
+			}
+		}
+		for field, value := range map[string]string{
+			"browser": p.Browser, "browser_version": p.BrowserVersion,
+			"platform": p.Platform, "source": p.Source,
+		} {
+			if strings.ContainsAny(value, "\r\n") {
+				errs = append(errs, fmt.Errorf("profiles.%s.%s cannot contain newlines", name, field))
 			}
 		}
 		if p.UserAgent != "" && !httpguts.ValidHeaderFieldValue(p.UserAgent) {

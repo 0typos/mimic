@@ -38,7 +38,7 @@ func TestTLSDialerModernProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer conn.Close()
-	if profile.Name != "chrome-133" {
+	if profile.Name != "chrome-152-linux" {
 		t.Fatalf("profile = %q", profile.Name)
 	}
 	if got := conn.(*utls.UConn).ConnectionState().Version; got != tls.VersionTLS12 {
@@ -103,7 +103,7 @@ func TestTLSDialerProbeCapturesEmittedClientHello(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Profile != "chrome-133" || len(result.Attempts) != 1 {
+	if result.Profile != "chrome-152-linux" || len(result.Attempts) != 1 {
 		t.Fatalf("unexpected probe result: %+v", result)
 	}
 	attempt := result.Attempts[0]
@@ -139,7 +139,11 @@ func TestBuiltinProfileJA4Values(t *testing.T) {
 	dialer := NewTLSDialer(state, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	_, port, _ := net.SplitHostPort(listener.Addr().String())
 	target := net.JoinHostPort("localhost", port)
-	for _, name := range []string{"chrome-133", "firefox-120", "safari-16", "ios-14", "android-11"} {
+	for _, info := range registry.Infos() {
+		name := info.Name
+		if info.JA4 == "" {
+			continue
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		result, probeErr := dialer.Probe(ctx, target, name)
 		cancel()
@@ -288,7 +292,7 @@ func tlsTestState(t *testing.T, legacy bool) *State {
 	cfg.Legacy.Retry = legacy
 	cfg.Legacy.AllowHosts = []string{"127.0.0.1"}
 	cfg.Legacy.RetryOn = []string{"protocol version", "handshake failure", "no cipher suite"}
-	cfg.Routes = []config.Route{{Host: "127.0.0.1", Profile: "chrome-133", InsecureVerify: true}}
+	cfg.Routes = []config.Route{{Host: "127.0.0.1", Profile: "chrome-152-linux", InsecureVerify: true}}
 	registry, err := profiles.New(nil)
 	if err != nil {
 		t.Fatal(err)

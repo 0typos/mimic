@@ -95,6 +95,51 @@ mimic init-ca [-cert PATH] [-key PATH]
 Creates an ECDSA P-256 local interception CA. Existing files are never
 overwritten. The certificate uses mode `0644`; the private key uses `0600`.
 
+## `mimic profiles`
+
+```text
+mimic profiles [-config PATH] [-format text|json]
+```
+
+Lists built-in profile identity, lifecycle, platform, and expected JA4 without
+requiring a running daemon or configuration file. Supply `-config` to include
+custom profiles after strict TOML validation. JSON output is intended for UI
+and automation consumers; text output is tab-separated and human-readable.
+
+This differs from `mimic ctl profiles`: the top-level command reads catalog
+metadata locally, while the control command reports the running daemon's status
+and loaded profile names.
+
+## `mimic profile capture`
+
+```text
+mimic profile capture -listen ENDPOINT -name NAME [-output PATH] [-timeout 1m]
+```
+
+Starts a temporary TCP or Unix listener, accepts one TLS ClientHello, calculates
+JA4, and writes a TOML snippet plus a normalized hexadecimal sidecar. It does
+not complete TLS or capture HTTP. The default endpoint is
+`tcp://127.0.0.1:8443`; existing output files are preserved unless `-force` is
+explicit.
+
+## `mimic profile import`
+
+```text
+mimic profile import (-input CLIENTHELLO | -pcap CAPTURE) -name NAME
+                     [-output PATH]
+```
+
+`-input` accepts a binary record/handshake or whitespace-separated hexadecimal
+text. `-pcap` accepts PCAP or PCAPNG and extracts the first complete reassembled
+TCP ClientHello. Both paths calculate and print JA4 and `JA4_r`, then write the
+same two-file output as live capture.
+
+Both profile commands accept `-browser`, `-browser-version`, `-platform`,
+`-lifecycle`, `-source`, `-captured-at`, `-user-agent`, `-ja4h`,
+`-header-order`, repeatable `-header`, `-min-version`, and `-max-version`.
+See [Profiles](profiles.md) for a complete capture-to-install tutorial and
+fidelity limitations.
+
 ## `mimic version`
 
 Prints the version embedded at build time. Development builds print `dev`.

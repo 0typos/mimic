@@ -8,7 +8,7 @@ level = "info"
 format = "text"
 
 [runtime]
-default_profile = "chrome-133"
+default_profile = "chrome-152-linux"
 connect_timeout = "3s"
 handshake_timeout = "5s"
 
@@ -72,12 +72,12 @@ X-Lab-Profile = "lab-firefox"
 
 [[routes]]
 host = "modern-origin"
-profile = "chrome-133"
+profile = "chrome-152-linux"
 legacy_retry = false
 insecure_skip_verify = true
 
 [[routes]]
 host = "legacy-origin"
-profile = "chrome-133"
+profile = "chrome-152-linux"
 legacy_retry = true
 insecure_skip_verify = true

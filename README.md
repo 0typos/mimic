@@ -17,7 +17,10 @@ until `v1.0.0`.
 
 Implemented today:
 
-- named and captured uTLS ClientHello profiles;
+- 10 lifecycle-labeled profiles, including reproducible current-browser
+  captures and pinned legacy uTLS presets;
+- one-command live, raw/hex, PCAP, and PCAPNG profile import with calculated
+  JA4 evidence;
 - pinned Chrome, Firefox, Safari, iOS, and Android presets;
 - JA4 calculation from the ClientHello bytes actually written to the network;
 - profile conformance probes with text/JSON evidence and mismatch exit status;
@@ -95,6 +98,12 @@ not by themselves certify parity with a real browser or every sensor.
 JA4H remains optional operator metadata and is not calculated. Validate
 important TLS and HTTP profiles against a controlled external sensor.
 
+Run `mimic profiles` to inspect the five current and five legacy built-ins.
+`chrome-152-linux` is the initial default. The catalog intentionally stays
+small; current Apple and Android replacements are not claimed until captured on
+those platforms. See the [profile workflow](docs/profiles.md) and
+[capture provenance](docs/profile-captures.md).
+
 JA4S and JA4X describe server-side behavior and certificates. They are not
 generally properties an outbound client proxy can reproduce. HTTP/2 uses Go's
 frame implementation, so Mimic does not claim browser-identical SETTINGS or
@@ -121,6 +130,7 @@ Mimic supports TLS 1.0 through TLS 1.3. It does not support SSLv2 or SSLv3.
 - [CLI reference](docs/cli.md)
 - [Configuration reference](docs/configuration.md)
 - [Profile format](docs/profiles.md)
+- [Built-in capture provenance](docs/profile-captures.md)
 - [Control and Caido bridge protocols](docs/protocols.md)
 - [Burp and Caido integration](docs/integrations.md)
 - [Architecture](docs/architecture.md)
@@ -135,7 +145,8 @@ Mimic supports TLS 1.0 through TLS 1.3. It does not support SSLv2 or SSLv3.
 - HTTP/3/QUIC is not implemented. UDP support is SOCKS5 datagram relay only.
 - Intercepted WebSocket upgrades are not yet tunneled.
 - HTTP/2 translation does not emulate browser frame-level fingerprints.
-- Built-in profiles are pinned rather than automatically tracking browsers.
+- Built-in profile names are pinned; new browser versions are added under new
+  names and old entries are labeled legacy rather than silently changed.
 - Listener, control endpoint, and CA changes require a daemon restart. Profiles,
   routes, legacy policy, and log level can reload live.
 - The Caido plugin is currently backend-only and targets `127.0.0.1:7777`.

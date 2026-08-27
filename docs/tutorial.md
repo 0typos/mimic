@@ -66,14 +66,14 @@ Run a conformance probe against the modern origin:
 ```sh
 docker compose -f lab/compose.yaml exec -T mimic \
   mimic probe -config /etc/mimic/config.toml \
-  -profile chrome-133 -target modern-origin:8443 -raw
+  -profile chrome-152-linux -target modern-origin:8443 -raw
 ```
 
 Look for:
 
 ```text
-expected JA4: t13d1516h2_8daaf6152771_d8a2da3f94cd
-observed JA4: t13d1516h2_8daaf6152771_d8a2da3f94cd
+expected JA4: t13d1517h2_8daaf6152771_cb7bf5808d99
+observed JA4: t13d1517h2_8daaf6152771_cb7bf5808d99
 result:       PASS
 ```
 
@@ -108,7 +108,7 @@ curl --noproxy "" --proxy http://127.0.0.1:18080 \
   http://default-origin:8080/inspect?lesson=http
 ```
 
-The response contains the Chrome 133 `user_agent` because Mimic handled a
+The response contains the Chrome 152 `user_agent` because Mimic handled a
 plaintext request and applied the active profile's HTTP identity.
 
 Now use interception for HTTPS:
@@ -143,20 +143,40 @@ Reset it when finished:
 
 ```sh
 docker compose -f lab/compose.yaml exec -T mimic \
-  mimic ctl -socket tcp://127.0.0.1:9090 use chrome-133
+  mimic ctl -socket tcp://127.0.0.1:9090 use chrome-152-linux
 ```
 
-To try your own saved profile, edit `lab/mimic.toml`, add a
-`[profiles.NAME]` table, then reload:
+To create your own saved profile without privileged packet capture, run a
+second local Mimic binary outside the lab:
 
 ```sh
+./mimic profile capture \
+  -listen tcp://127.0.0.1:8443 \
+  -name tutorial-browser \
+  -output ./tutorial-browser.toml \
+  -browser "Tutorial Browser" \
+  -browser-version "1.0" \
+  -platform "your OS"
+```
+
+Open `https://localhost:8443/` in a clean browser profile. A page-load failure
+is expected: the capture listener stops immediately after ClientHello. Review
+the generated TOML and `.clienthello.hex` sidecar, copy both into the lab
+configuration directory, then add the generated `[profiles.NAME]` table to
+`lab/mimic.toml`. Validate and reload:
+
+```sh
+docker compose -f lab/compose.yaml exec -T mimic \
+  mimic validate -config /etc/mimic/config.toml
+
 docker compose -f lab/compose.yaml exec -T mimic \
   mimic ctl -socket tcp://127.0.0.1:9090 reload
 ```
 
 Profiles, routes, runtime timeouts, legacy policy, and log level reload live.
 Listener, control, logging-format, and CA changes require a restart. See the
-[profile format](profiles.md) before using a captured ClientHello.
+[profile workflow](profiles.md) covers raw/hex and PCAP imports, metadata, SNI,
+verification, and replay limitations.
 
 ## 6. Apply host routes and per-request overrides
 
@@ -187,7 +207,7 @@ Reset the default to Chrome before continuing:
 
 ```sh
 docker compose -f lab/compose.yaml exec -T mimic \
-  mimic ctl -socket tcp://127.0.0.1:9090 use chrome-133
+  mimic ctl -socket tcp://127.0.0.1:9090 use chrome-152-linux
 ```
 
 ## 7. Exercise bounded legacy TLS

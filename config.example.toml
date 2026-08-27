@@ -9,7 +9,7 @@ level = "info"                 # debug | info | warn | error
 format = "text"                # text | json
 
 [runtime]
-default_profile = "chrome-133"
+default_profile = "chrome-152-linux"
 connect_timeout = "10s"
 handshake_timeout = "15s"
 
@@ -65,11 +65,16 @@ allow_cidrs = ["127.0.0.0/8", "::1/128"]
 # mode = "intercept"
 # allow_cidrs = ["127.0.0.0/8", "::1/128"]
 
-# A saved profile can name a stable uTLS preset...
+# A saved compatibility profile can name a stable, legacy uTLS preset...
 [profiles.corporate-chrome]
 hello = "chrome-133"
 ja4 = "t13d1516h2_8daaf6152771_d8a2da3f94cd"
 ja4h = "replace-with-observed-ja4h"
+browser = "Chrome"
+browser_version = "133"
+platform = "Windows 10 x86_64"
+lifecycle = "legacy"
+source = "uTLS preset"
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
 header_order = ["host", "connection", "user-agent", "accept", "accept-encoding", "accept-language", "cookie"]
 
@@ -80,6 +85,12 @@ Accept-Language = "en-US,en;q=0.9"
 # [profiles.captured-device]
 # client_hello_file = "./profiles/device-clienthello.hex"
 # ja4 = "t13d..."
+# browser = "DeviceClient"
+# browser_version = "1.0"
+# platform = "test appliance"
+# lifecycle = "custom"
+# source = "controlled lab capture"
+# captured_at = "2026-08-27T18:00:00-04:00"
 # user_agent = "DeviceClient/1.0"
 # header_order = ["host", "user-agent", "accept"]
 

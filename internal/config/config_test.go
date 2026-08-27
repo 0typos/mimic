@@ -29,7 +29,7 @@ mode = "tunnel"
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Logging.Level != "info" || cfg.Runtime.DefaultProfile != "chrome-133" {
+	if cfg.Logging.Level != "info" || cfg.Runtime.DefaultProfile != "chrome-152-linux" {
 		t.Fatalf("defaults not retained: %+v", cfg)
 	}
 	want := filepath.Join(dir, "profile.hex")
@@ -252,6 +252,15 @@ func TestValidationRejectsOperationallyInvalidValues(t *testing.T) {
 		{"profile versions", func(c *Config) {
 			c.Profiles["bad"] = Profile{Hello: "chrome-133", MinVersion: "tls1.3", MaxVersion: "tls1.2"}
 		}, "min_version cannot"},
+		{"profile lifecycle", func(c *Config) {
+			c.Profiles["bad"] = Profile{Hello: "chrome-133", Lifecycle: "stale"}
+		}, "lifecycle"},
+		{"profile captured at", func(c *Config) {
+			c.Profiles["bad"] = Profile{Hello: "chrome-133", CapturedAt: "yesterday"}
+		}, "captured_at"},
+		{"profile metadata newline", func(c *Config) {
+			c.Profiles["bad"] = Profile{Hello: "chrome-133", Browser: "one\ntwo"}
+		}, "browser"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

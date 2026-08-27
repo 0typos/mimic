@@ -63,22 +63,34 @@ func FromClientHello(raw []byte) (JA4, error) {
 	return CalculateJA4(hello), nil
 }
 
-// ParseClientHello parses a TLS record stream or a bare TLS handshake message.
-func ParseClientHello(raw []byte) (ClientHello, error) {
+// ExtractClientHello returns one complete bare ClientHello handshake from a
+// bare handshake or a stream of TLS handshake records. Record framing and any
+// bytes following the first ClientHello are removed.
+func ExtractClientHello(raw []byte) ([]byte, error) {
 	handshake, err := clientHelloHandshake(raw)
 	if err != nil {
-		return ClientHello{}, err
+		return nil, err
 	}
 	if len(handshake) < 4 || handshake[0] != 1 {
-		return ClientHello{}, errors.New("TLS handshake is not a ClientHello")
+		return nil, errors.New("TLS handshake is not a ClientHello")
 	}
 	length := int(handshake[1])<<16 | int(handshake[2])<<8 | int(handshake[3])
 	if length > maxClientHello {
-		return ClientHello{}, errors.New("ClientHello exceeds 1 MiB")
+		return nil, errors.New("ClientHello exceeds 1 MiB")
 	}
 	if len(handshake)-4 < length {
-		return ClientHello{}, errors.New("truncated ClientHello handshake")
+		return nil, errors.New("truncated ClientHello handshake")
 	}
+	return append([]byte(nil), handshake[:4+length]...), nil
+}
+
+// ParseClientHello parses a TLS record stream or a bare TLS handshake message.
+func ParseClientHello(raw []byte) (ClientHello, error) {
+	handshake, err := ExtractClientHello(raw)
+	if err != nil {
+		return ClientHello{}, err
+	}
+	length := int(handshake[1])<<16 | int(handshake[2])<<8 | int(handshake[3])
 	body := handshake[4 : 4+length]
 	cursor := helloCursor{data: body}
 	legacyVersion, err := cursor.uint16("legacy version")

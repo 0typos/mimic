@@ -59,7 +59,7 @@ func TestHTTPProxyEndToEnd(t *testing.T) {
 	}
 	select {
 	case agent := <-seenAgent:
-		if !strings.Contains(agent, "Chrome/133") {
+		if !strings.Contains(agent, "Chrome/152") {
 			t.Fatalf("profile user agent not applied: %q", agent)
 		}
 	case <-time.After(time.Second):

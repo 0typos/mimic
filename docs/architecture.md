@@ -18,6 +18,7 @@ mimic ctl ── JSON lines over Unix/loopback TCP ─> daemon state
 | `cmd/mimic` | CLI, process lifecycle, logging setup, reload boundaries |
 | `internal/config` | Strict TOML schema, defaults, endpoint and relationship validation |
 | `internal/fingerprint` | ClientHello parsing and BSD-licensed JA4 TLS calculation |
+| `internal/profilecapture` | Live/raw/hex/PCAP profile import and TOML generation |
 | `internal/profiles` | Built-ins, captured ClientHello loading, HTTP identity |
 | `internal/engine` | Runtime state, host routing, uTLS handshakes, legacy policy |
 | `internal/mitm` | CA generation/loading and cached per-host leaf certificates |

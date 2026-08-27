@@ -8,6 +8,7 @@ license files distributed by each dependency are authoritative.
 | Project | Purpose | License family |
 |---|---|---|
 | `github.com/BurntSushi/toml` | TOML decoding | MIT |
+| `github.com/gopacket/gopacket` | PCAP/PCAPNG decoding and packet parsing | BSD-3-Clause |
 | `github.com/refraction-networking/utls` | ClientHello construction and TLS | BSD-3-Clause |
 | `github.com/andybalholm/brotli` | uTLS compression support | MIT |
 | `github.com/klauspost/compress` | uTLS compression support | BSD-3-Clause |

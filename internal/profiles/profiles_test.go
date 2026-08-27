@@ -49,6 +49,19 @@ func TestRegistryIncludesBuiltinsAndCustomPreset(t *testing.T) {
 	if err := builtin.Apply(nil); err != nil {
 		t.Fatalf("preset profile Apply: %v", err)
 	}
+	infos := registry.Infos()
+	if len(infos) != 11 || !slices.IsSortedFunc(infos, func(a, b Info) int { return strings.Compare(a.Name, b.Name) }) {
+		t.Fatalf("profile metadata is not sorted and complete: %+v", infos)
+	}
+	foundCustom := false
+	for _, info := range infos {
+		if info.Name == "lab" {
+			foundCustom = info.Lifecycle == "custom" && !info.Builtin
+		}
+	}
+	if !foundCustom {
+		t.Fatalf("custom metadata missing: %+v", infos)
+	}
 }
 
 func TestRegistryRejectsUnknownPreset(t *testing.T) {

@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/BurntSushi/toml v1.6.0
+	github.com/gopacket/gopacket v1.7.0
 	github.com/refraction-networking/utls v1.8.2
 	golang.org/x/net v0.58.0
 )

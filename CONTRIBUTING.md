@@ -27,6 +27,9 @@ make caido
   as security-sensitive design changes.
 - Do not add inline secrets, captured production traffic, private CA keys, or
   target-specific data to fixtures.
+- New built-in ClientHellos must come from the actual named client/platform,
+  use a versioned profile name, and include the provenance and hash evidence
+  required by `docs/profile-captures.md`.
 - Keep the daemon independent from Burp or Caido-specific APIs; integrations
   should use versioned local protocols.
 

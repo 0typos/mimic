@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -17,6 +18,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	utls "github.com/refraction-networking/utls"
 
 	"github.com/msmythe/mimic/internal/config"
 	"github.com/msmythe/mimic/internal/control"
@@ -276,6 +279,166 @@ mode = "intercept"
 	}
 }
 
+func TestProfileImportAndProfilesList(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "hello.bin")
+	if err := os.WriteFile(input, testClientHelloRecord(t), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(dir, "captured.toml")
+	var output bytes.Buffer
+	err := run([]string{
+		"profile", "import", "-input", input, "-name", "cli-capture", "-output", profilePath,
+		"-browser", "Test Browser", "-browser-version", "1.2.3", "-platform", "Linux",
+		"-lifecycle", "current", "-captured-at", "2026-08-27T18:00:00-04:00",
+		"-source", "controlled test", "-user-agent", "TestBrowser/1.2.3", "-ja4h", "operator metadata",
+		"-header-order", "host, user-agent", "-header", "Accept-Language: en-US", "-header", "X-Empty:",
+		"-min-version", "tls1.2", "-max-version", "tls1.3",
+	}, &output, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, fragment := range []string{"profile:", "ClientHello:", "JA4:", "JA4_r:", "next:"} {
+		if !strings.Contains(output.String(), fragment) {
+			t.Errorf("profile import output omitted %q:\n%s", fragment, output.String())
+		}
+	}
+	profileBody, err := os.ReadFile(profilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configBody := `version = 1
+[[listeners]]
+name = "http"
+protocol = "http"
+listen = "tcp://127.0.0.1:0"
+mode = "tunnel"
+` + string(profileBody)
+	if err := os.WriteFile(profilePath, []byte(configBody), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	output.Reset()
+	if err := run([]string{"profiles", "-config", profilePath}, &output, &output); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "cli-capture\tcurrent\tTest Browser 1.2.3\tLinux") {
+		t.Fatalf("text profile list = %q", output.String())
+	}
+	output.Reset()
+	if err := run([]string{"profiles", "-config", profilePath, "-format", "json"}, &output, &output); err != nil {
+		t.Fatal(err)
+	}
+	var infos []profiles.Info
+	if err := json.Unmarshal(output.Bytes(), &infos); err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, info := range infos {
+		if info.Name == "cli-capture" {
+			found = info.Lifecycle == "current" && !info.Builtin && info.Browser == "Test Browser"
+		}
+	}
+	if !found {
+		t.Fatalf("custom profile metadata missing from %+v", infos)
+	}
+
+	output.Reset()
+	if err := run([]string{"profiles", "-format", "json"}, &output, &output); err != nil {
+		t.Fatal(err)
+	}
+	infos = nil
+	if err := json.Unmarshal(output.Bytes(), &infos); err != nil {
+		t.Fatal(err)
+	}
+	if len(infos) != 10 {
+		t.Fatalf("built-in profile count = %d, want 10", len(infos))
+	}
+}
+
+func TestProfileCaptureOnUnixSocket(t *testing.T) {
+	dir := t.TempDir()
+	socketPath := filepath.Join(dir, "capture.sock")
+	profilePath := filepath.Join(dir, "live.toml")
+	var output bytes.Buffer
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- run([]string{
+			"profile", "capture", "-listen", "unix://" + socketPath,
+			"-timeout", "2s", "-name", "live-capture", "-output", profilePath,
+		}, &output, &output)
+	}()
+	waitForSocket(t, socketPath)
+	conn, err := net.Dial("unix", socketPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Write(testClientHelloRecord(t)); err != nil {
+		t.Fatal(err)
+	}
+	conn.Close()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("profile capture did not finish")
+	}
+	if !strings.Contains(output.String(), "listening for one TLS ClientHello") || !strings.Contains(output.String(), "JA4:") {
+		t.Fatalf("capture output = %q", output.String())
+	}
+	if _, err := os.Stat(profilePath); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProfileCLIValidationErrors(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "hello.bin")
+	if err := os.WriteFile(input, testClientHelloRecord(t), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"profile"},
+		{"profile", "unknown"},
+		{"profile", "import", "-name", "test"},
+		{"profile", "import", "-input", input, "-pcap", input, "-name", "test"},
+		{"profile", "import", "-input", input},
+		{"profile", "import", "-input", input, "-name", "test", "positional"},
+		{"profile", "import", "-input", input, "-name", "test", "-header", "invalid"},
+		{"profile", "import", "-pcap", filepath.Join(dir, "missing.pcap"), "-name", "test"},
+		{"profile", "capture", "-name", "test", "-timeout", "0s"},
+		{"profile", "capture", "-name", "bad.name"},
+		{"profile", "capture", "-name", "test", "-listen", "udp://127.0.0.1:0"},
+		{"profile", "capture", "-name", "test", "positional"},
+		{"profiles", "positional"},
+		{"profiles", "-format", "yaml"},
+		{"profiles", "-config", filepath.Join(dir, "missing.toml")},
+	} {
+		if err := run(args, io.Discard, io.Discard); err == nil {
+			t.Errorf("run(%v) unexpectedly succeeded", args)
+		}
+	}
+	var list stringListFlag
+	if list.String() != "" {
+		t.Fatalf("empty string list = %q", list.String())
+	}
+	if err := list.Set("one"); err != nil || list.String() != "one" {
+		t.Fatalf("string list = %q, %v", list.String(), err)
+	}
+}
+
+func TestProfileCaptureTimeout(t *testing.T) {
+	socketPath := filepath.Join(t.TempDir(), "capture.sock")
+	err := run([]string{
+		"profile", "capture", "-listen", "unix://" + socketPath,
+		"-timeout", "20ms", "-name", "timeout",
+	}, io.Discard, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "deadline exceeded") {
+		t.Fatalf("capture timeout error = %v", err)
+	}
+}
+
 func TestValidateRejectsUnknownRouteProfile(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "config.toml")
 	configBody := `
@@ -510,6 +673,31 @@ func TestDefaultConfigPathEnvironment(t *testing.T) {
 	if got := defaultConfigPath(); got != "/tmp/mimic-explicit.toml" {
 		t.Fatalf("defaultConfigPath = %q", got)
 	}
+}
+
+func testClientHelloRecord(t *testing.T) []byte {
+	t.Helper()
+	client, server := net.Pipe()
+	errCh := make(chan error, 1)
+	go func() {
+		conn := utls.UClient(client, &utls.Config{ServerName: "example.test", InsecureSkipVerify: true}, utls.HelloChrome_133)
+		errCh <- conn.Handshake()
+	}()
+	header := make([]byte, 5)
+	if _, err := io.ReadFull(server, header); err != nil {
+		t.Fatal(err)
+	}
+	payload := make([]byte, int(binary.BigEndian.Uint16(header[3:5])))
+	if _, err := io.ReadFull(server, payload); err != nil {
+		t.Fatal(err)
+	}
+	server.Close()
+	select {
+	case <-errCh:
+	case <-time.After(time.Second):
+		t.Fatal("capturing test ClientHello did not terminate")
+	}
+	return append(header, payload...)
 }
 
 func writeProbeConfig(t *testing.T) string {

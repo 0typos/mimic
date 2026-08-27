@@ -18,7 +18,7 @@ Request:
 Success:
 
 ```json
-{"id":1,"result":{"profile":"chrome-133"}}
+{"id":1,"result":{"profile":"chrome-152-linux"}}
 ```
 
 Failure:
@@ -48,7 +48,7 @@ and creates Unix control sockets with mode `0600`.
 A Caido bridge connection begins with one UTF-8 line no larger than 8192 bytes:
 
 ```text
-MIMIC/1 {"target":"example.com:443","tls":true,"profile":"chrome-133"}\n
+MIMIC/1 {"target":"example.com:443","tls":true,"profile":"chrome-152-linux"}\n
 ```
 
 Fields:
