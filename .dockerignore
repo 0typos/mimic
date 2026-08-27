@@ -1,0 +1,8 @@
+.git
+.github
+coverage.out
+dist
+mimic
+integrations/caido/node_modules
+integrations/caido/dist
+lab/.state

@@ -10,7 +10,8 @@ should use the same version for coordinated releases.
    `package.json` files.
 3. Run `make check audit caido` from a clean checkout.
 4. Run `./scripts/build-release.sh 0.1.0` and inspect every archive.
-5. Complete the manual checks in `docs/testing.md`.
+5. Extract an archive and run `./lab/run.sh up && ./lab/run.sh smoke` from it.
+6. Complete the manual checks in `docs/testing.md`.
 
 Run the packaging script on Linux with GNU tar. Set `SOURCE_DATE_EPOCH` to a
 release timestamp when deterministic archive metadata must differ from the
@@ -23,9 +24,9 @@ git tag -s v0.1.0 -m "Mimic v0.1.0"
 git push origin main v0.1.0
 ```
 
-The release workflow rebuilds Linux and macOS archives, rebuilds the Caido
-package, generates SHA-256 checksums, and attaches them to a draft GitHub
-release. Review the draft before publishing it.
+The release workflow first runs the complete container lab, then rebuilds Linux
+and macOS archives and the Caido package, generates SHA-256 checksums, and
+attaches them to a draft GitHub release. Review the draft before publishing it.
 
 ## Supported release targets
 

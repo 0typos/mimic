@@ -33,3 +33,16 @@ jobs:
       - run: corepack enable
       - run: make caido
       - run: make audit-caido
+
+  lab:
+    name: Tutorial lab
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - run: make lab-check
+      - run: ./lab/run.sh up
+      - run: ./lab/run.sh smoke
+      - name: Stop tutorial lab
+        if: always()
+        run: ./lab/run.sh down

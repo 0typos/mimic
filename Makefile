@@ -1,4 +1,4 @@
-.PHONY: all audit audit-caido audit-go build caido check clean coverage fmt-check release test
+.PHONY: all audit audit-caido audit-go build caido check clean coverage fmt-check lab-check release test
 
 VERSION ?= dev
 COVERAGE_MIN ?= 80
@@ -13,7 +13,7 @@ test:
 	go test -race ./...
 
 fmt-check:
-	@files="$$(gofmt -l $$(find cmd internal -type f -name '*.go'))"; \
+	@files="$$(gofmt -l $$(find cmd internal lab -type f -name '*.go'))"; \
 	if [ -n "$$files" ]; then echo "Go files need gofmt:"; echo "$$files"; exit 1; fi
 
 coverage:
@@ -39,7 +39,12 @@ audit-caido:
 caido:
 	cd integrations/caido && corepack pnpm install --frozen-lockfile && corepack pnpm test && corepack pnpm typecheck && corepack pnpm build
 
-release: check audit caido
+lab-check:
+	go test -tags lab ./lab/cmd/lab-origin
+	docker compose -f lab/compose.yaml config --quiet
+	bash -n lab/run.sh lab/start-mimic.sh
+
+release: check audit caido lab-check
 	./scripts/build-release.sh "$(VERSION)"
 
 clean:

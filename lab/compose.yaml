@@ -1,0 +1,45 @@
+name: mimic-lab
+
+services:
+  origin:
+    build:
+      context: ..
+      dockerfile: lab/Dockerfile
+      target: origin
+    healthcheck:
+      test: ["CMD", "/lab-origin", "healthcheck"]
+      interval: 1s
+      timeout: 2s
+      retries: 20
+      start_period: 1s
+    networks:
+      default:
+        aliases:
+          - modern-origin
+          - legacy-origin
+          - default-origin
+
+  mimic:
+    build:
+      context: ..
+      dockerfile: lab/Dockerfile
+      target: mimic
+    depends_on:
+      origin:
+        condition: service_healthy
+    volumes:
+      - ./mimic.toml:/etc/mimic/config.toml:ro,Z
+      - ./.state:/etc/mimic/.state:Z
+    ports:
+      - "127.0.0.1:18080:8080"
+      - "127.0.0.1:18081:8081"
+      - "127.0.0.1:11080:1080"
+      - "127.0.0.1:11080:1080/udp"
+      # The bundled Caido plugin currently targets this fixed loopback port.
+      - "127.0.0.1:7777:7777"
+    healthcheck:
+      test: ["CMD", "mimic", "ctl", "-socket", "tcp://127.0.0.1:9090", "info"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+      start_period: 1s

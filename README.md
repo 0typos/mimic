@@ -31,28 +31,29 @@ Implemented today:
 - structured text or JSON logs with a live-adjustable level;
 - strict TOML validation and a newline-framed local control API.
 
-## Quick start
+## Start here
 
-Mimic requires Go 1.25 or newer to build. Release archives contain a standalone
-binary and do not require Go, Node, OpenSSL, or separate runtime assets.
+The [five-minute quickstart](docs/quickstart.md) builds a disposable local lab
+and proves JA4 conformance, profiled HTTP, and HTTPS interception:
+
+```sh
+./lab/run.sh up
+./lab/run.sh demo
+```
+
+Continue with the [complete hands-on tutorial](docs/tutorial.md) for routes,
+live control, legacy TLS, SOCKS, the Caido plugin, and Burp Suite. The lab uses
+Docker Compose, starts in two to three minutes on a typical development machine,
+and never installs its CA into the host trust store.
+
+For a native build, Mimic requires Go 1.25 or newer. Release archives contain a
+standalone binary that needs no Go or Node runtime for normal operation:
 
 ```sh
 cp config.example.toml config.toml
 make build VERSION=0.1.0
 ./mimic validate -config ./config.toml
-./mimic probe -config ./config.toml -profile chrome-133 -target https://example.com
 ./mimic daemon -config ./config.toml
-```
-
-Control the running daemon from another terminal:
-
-```sh
-./mimic ctl -config ./config.toml info
-./mimic ctl -config ./config.toml status
-./mimic ctl -config ./config.toml profiles
-./mimic ctl -config ./config.toml use firefox-120
-./mimic ctl -config ./config.toml log-level debug
-./mimic ctl -config ./config.toml reload
 ```
 
 `MIMIC_CONFIG` sets the default configuration path. Otherwise Mimic uses
@@ -114,6 +115,8 @@ Mimic supports TLS 1.0 through TLS 1.3. It does not support SSLv2 or SSLv3.
 
 ## Documentation
 
+- [Five-minute quickstart](docs/quickstart.md)
+- [Complete hands-on tutorial](docs/tutorial.md)
 - [CLI reference](docs/cli.md)
 - [Configuration reference](docs/configuration.md)
 - [Profile format](docs/profiles.md)

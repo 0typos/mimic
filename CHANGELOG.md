@@ -21,3 +21,6 @@ Semantic Versioning once public tags begin.
   with an 80% enforced coverage floor and 90% maintained target.
 - Unit, race, protocol integration, vulnerability, and release build gates.
 - Operator, integration, protocol, security, testing, and release documentation.
+- A sub-five-minute quickstart and comprehensive hands-on tutorial backed by a
+  deterministic Docker Compose lab for modern TLS, TLS 1.0 fallback, all proxy
+  paths, live control, Burp, and Caido.

@@ -2,9 +2,10 @@
 
 ## Standalone binary
 
-Official release archives contain one `mimic` executable plus documentation,
-the systemd example, and an example config. Verify the published checksum
-before installing.
+Official release archives contain one `mimic` executable, documentation, the
+systemd example, an example config, and the source subset needed by the optional
+Docker tutorial lab. The executable itself has no runtime dependency on that
+source, Docker, Go, or Node. Verify the published checksum before installing.
 
 ```sh
 install -m 0755 mimic /usr/local/bin/mimic
@@ -41,9 +42,11 @@ journalctl -u mimic -f
 
 ## Containers
 
-No container image is required for normal deployment. If packaging Mimic in a
-container, mount the TOML and CA key read-only, expose only intended proxy ports,
-and use a persistent or host-visible control socket only when necessary.
+No container image is required for normal deployment. The Compose setup under
+`lab/` is intentionally an educational environment, not a production image. If
+packaging Mimic in a container, mount the TOML and CA key read-only, expose only
+intended proxy ports, and use a persistent or host-visible control socket only
+when necessary.
 
 ## Resource behavior
 

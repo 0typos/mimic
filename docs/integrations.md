@@ -1,5 +1,9 @@
 # Integrations
 
+The [complete hands-on tutorial](tutorial.md) includes a deterministic local
+origin and end-to-end setup for both tools. Use this page as the shorter
+reference after completing that workflow.
+
 ## Burp Suite
 
 To let Mimic originate upstream TLS, use an HTTP listener in `intercept` mode:
@@ -11,6 +15,9 @@ To let Mimic originate upstream TLS, use an HTTP listener in `intercept` mode:
 4. Configure a Burp upstream proxy rule pointing to the intercept listener.
 5. Start with a narrow destination scope and confirm Mimic's debug log shows the
    expected profile and negotiated TLS values.
+
+Current Burp UI paths and the lab values are documented in the
+[Burp tutorial section](tutorial.md#10-put-mimic-behind-burp-suite).
 
 Using a tunnel-mode listener as Burp's upstream proxy will not change the TLS
 ClientHello because Burp's TLS bytes remain opaque inside CONNECT.
@@ -30,6 +37,9 @@ host-routed profile selection.
 
 No Mimic CA is required for this path: Caido supplies plaintext HTTP over a
 custom connection and Mimic creates TLS only toward the target.
+
+See the [Caido tutorial section](tutorial.md#9-use-the-caido-bridge) for a raw
+bridge check followed by plugin installation and domain opt-in.
 
 ## Direct clients
 

@@ -8,3 +8,4 @@
 /integrations/caido/packages/*/dist/
 /mimic-static
 /dist/
+/lab/.state/

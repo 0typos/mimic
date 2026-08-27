@@ -6,6 +6,7 @@
 make check
 make audit
 make caido
+make lab-check
 make build VERSION=0.1.0
 ```
 
@@ -17,6 +18,26 @@ margin as production code changes. Both values can be overridden locally with
 with a pinned `govulncheck` release and audits the Caido dependency tree. `make caido`
 installs the locked plugin toolchain, runs its protocol-framing tests, typechecks
 it, builds it, and validates the package manifest.
+
+`make lab-check` compiles and tests the build-tagged deterministic origin,
+validates the Compose model, and checks the shell entry points without starting
+containers.
+
+## Tutorial lab
+
+The CI lab job performs the public workflow against real containers:
+
+```sh
+./lab/run.sh up
+./lab/run.sh smoke
+./lab/run.sh down
+```
+
+The smoke tour verifies modern JA4 conformance, profiled HTTP, HTTPS
+interception with the generated CA, live profile changes, route precedence,
+actual TLS 1.0 fallback, SOCKS identity preservation, the Caido bridge, the
+Unix-socket listener, live log-level/profile evidence, and daemon counters. The
+`down` step runs even if an assertion fails.
 
 ## Automated coverage
 
@@ -55,3 +76,5 @@ Before tagging:
 5. Run `mimic probe` for every bundled profile, then independently compare the
    traffic against a controlled JA4/JA4H sensor.
 6. Verify release archive checksums on a separate host.
+7. Extract one release archive on a Docker host and complete the five-minute
+   quickstart from the packaged `lab/` directory.

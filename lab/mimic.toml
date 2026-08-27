@@ -1,0 +1,83 @@
+version = 1
+
+[control]
+listen = "tcp://127.0.0.1:9090"
+
+[logging]
+level = "info"
+format = "text"
+
+[runtime]
+default_profile = "chrome-133"
+connect_timeout = "3s"
+handshake_timeout = "5s"
+
+[mitm]
+enabled = true
+ca_cert = ".state/mimic-ca.pem"
+ca_key = ".state/mimic-ca-key.pem"
+leaf_ttl = "24h"
+
+[legacy]
+enabled = true
+min_version = "tls1.0"
+retry = true
+retry_on = ["protocol version", "handshake failure", "insufficient security", "no cipher suite"]
+allow_hosts = ["legacy-origin", "localhost"]
+# The lab origins use an ephemeral self-signed certificate. Never copy this
+# setting to a production configuration; use valid roots or a narrow route.
+insecure_skip_verify = true
+
+[[listeners]]
+name = "http-tunnel"
+protocol = "http"
+listen = "tcp://0.0.0.0:8080"
+mode = "tunnel"
+allow_cidrs = ["0.0.0.0/0"]
+
+[[listeners]]
+name = "http-intercept"
+protocol = "http"
+listen = "tcp://0.0.0.0:8081"
+mode = "intercept"
+allow_cidrs = ["0.0.0.0/0"]
+
+[[listeners]]
+name = "unix-http"
+protocol = "http"
+listen = "unix:///etc/mimic/.state/http.sock"
+mode = "tunnel"
+
+[[listeners]]
+name = "socks"
+protocol = "socks5"
+listen = "tcp://0.0.0.0:1080"
+udp_listen = "udp://0.0.0.0:1080"
+allow_cidrs = ["0.0.0.0/0"]
+
+[[listeners]]
+name = "caido"
+protocol = "caido"
+listen = "tcp://0.0.0.0:7777"
+allow_cidrs = ["0.0.0.0/0"]
+
+[profiles.lab-firefox]
+hello = "firefox-120"
+ja4 = "t13d1715h2_5b57614c22b0_5c2c66f702b0"
+user_agent = "Mozilla/5.0 (Mimic Lab; rv:120.0) Gecko/20100101 Firefox/120.0"
+header_order = ["host", "user-agent", "accept", "accept-language", "accept-encoding", "connection", "x-lab-profile"]
+
+[profiles.lab-firefox.headers]
+X-Lab-Profile = "lab-firefox"
+
+[[routes]]
+host = "modern-origin"
+profile = "chrome-133"
+legacy_retry = false
+insecure_skip_verify = true
+
+[[routes]]
+host = "legacy-origin"
+profile = "chrome-133"
+legacy_retry = true
+insecure_skip_verify = true

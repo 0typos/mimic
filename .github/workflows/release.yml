@@ -34,6 +34,12 @@ jobs:
           else
             echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
           fi
+      - run: make lab-check
+      - run: ./lab/run.sh up
+      - run: ./lab/run.sh smoke
+      - name: Stop tutorial lab
+        if: always()
+        run: ./lab/run.sh down
       - run: make release VERSION="${{ steps.version.outputs.value }}"
       - uses: actions/upload-artifact@v7
         with:
