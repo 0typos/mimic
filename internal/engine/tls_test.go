@@ -175,6 +175,111 @@ func TestRetryPolicyHelpers(t *testing.T) {
 	}
 }
 
+func TestTLSDialerInputAndConnectionFailures(t *testing.T) {
+	state := tlsTestState(t, false)
+	dialer := NewTLSDialer(state, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if result, err := dialer.Probe(context.Background(), "missing-port", ""); err == nil || result.Target != "missing-port" {
+		t.Fatalf("invalid target result=%+v error=%v", result, err)
+	}
+	if _, _, err := dialer.DialProfile(context.Background(), "127.0.0.1:443", "missing"); err == nil {
+		t.Fatal("expected unknown profile error")
+	}
+
+	address := closedTCPAddress(t)
+	result, err := dialer.Probe(context.Background(), address, "")
+	if err == nil || len(result.Attempts) != 1 || result.Attempts[0].Error == "" {
+		t.Fatalf("connection failure result=%+v error=%v", result, err)
+	}
+}
+
+func TestTLSDialerLegacyRetryFailureAndRouteOverride(t *testing.T) {
+	address := closedTCPAddress(t)
+	state := tlsTestState(t, true)
+	cfg := state.Snapshot().Config
+	cfg.Legacy.RetryOn = []string{""}
+	registry, _ := profiles.New(nil)
+	state, err := New(cfg, registry, new(slog.LevelVar))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dialer := NewTLSDialer(state, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	result, err := dialer.Probe(context.Background(), address, "")
+	if err == nil || len(result.Attempts) != 2 || !result.Attempts[1].Legacy {
+		t.Fatalf("legacy failure result=%+v error=%v", result, err)
+	}
+
+	disabled := false
+	cfg.Routes[0].LegacyRetry = &disabled
+	state, err = New(cfg, registry, new(slog.LevelVar))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err = NewTLSDialer(state, slog.New(slog.NewTextHandler(io.Discard, nil))).Probe(context.Background(), address, "")
+	if err == nil || len(result.Attempts) != 1 {
+		t.Fatalf("route override result=%+v error=%v", result, err)
+	}
+}
+
+func TestTLSDialerHonorsProfileVersionBounds(t *testing.T) {
+	listener, _ := startTLSServer(t, &tls.Config{
+		Certificates: []tls.Certificate{selfSignedRSA(t)},
+		MinVersion:   tls.VersionTLS12,
+		MaxVersion:   tls.VersionTLS12,
+	})
+	defer listener.Close()
+	cfg := config.Defaults()
+	cfg.Listeners = []config.Listener{{Name: "test", Protocol: "http", Listen: "tcp://127.0.0.1:0", Mode: "tunnel"}}
+	cfg.Profiles["bounded"] = config.Profile{Hello: "chrome-133", MinVersion: "tls1.2", MaxVersion: "tls1.2"}
+	cfg.Routes = []config.Route{{Host: "127.0.0.1", Profile: "bounded", InsecureVerify: true}}
+	registry, err := profiles.New(cfg.Profiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := New(cfg, registry, new(slog.LevelVar))
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, profile, err := NewTLSDialer(state, slog.New(slog.NewTextHandler(io.Discard, nil))).Dial(context.Background(), listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn.Close()
+	if profile.Name != "bounded" {
+		t.Fatalf("selected profile = %q", profile.Name)
+	}
+}
+
+func TestFingerprintPopulationAndTLSVersionNames(t *testing.T) {
+	attempt := HandshakeAttempt{}
+	populateFingerprint(&attempt, nil)
+	populateFingerprint(&attempt, &captureConn{})
+	if attempt.FingerprintError == "" {
+		t.Fatal("expected empty capture fingerprint error")
+	}
+	for version, want := range map[uint16]string{
+		tls.VersionTLS10: "TLS1.0",
+		tls.VersionTLS11: "TLS1.1",
+		tls.VersionTLS12: "TLS1.2",
+		tls.VersionTLS13: "TLS1.3",
+		0xffff:           "0xffff",
+	} {
+		if got := tlsVersionName(version); got != want {
+			t.Errorf("tlsVersionName(%x) = %q, want %q", version, got, want)
+		}
+	}
+}
+
+func closedTCPAddress(t *testing.T) string {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := listener.Addr().String()
+	listener.Close()
+	return address
+}
+
 func tlsTestState(t *testing.T, legacy bool) *State {
 	t.Helper()
 	cfg := config.Defaults()

@@ -38,6 +38,9 @@ make audit
 make caido
 ```
 
+`make check` enforces at least 80% repository-wide statement coverage. Keep the
+suite at or above the maintained 90% target when adding production code.
+
 ## Commit and pull-request guidance
 
 Use focused commits with an imperative summary. Explain protocol or security

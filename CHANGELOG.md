@@ -17,5 +17,7 @@ Semantic Versioning once public tags begin.
 - Caido backend plugin package.
 - Outbound ClientHello capture, JA4 calculation, built-in conformance fixtures,
   and a text/JSON `mimic probe` command.
+- Expanded protocol, CLI, configuration, certificate, and failure-path tests,
+  with an 80% enforced coverage floor and 90% maintained target.
 - Unit, race, protocol integration, vulnerability, and release build gates.
 - Operator, integration, protocol, security, testing, and release documentation.

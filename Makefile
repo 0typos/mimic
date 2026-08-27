@@ -1,7 +1,8 @@
 .PHONY: all audit audit-caido audit-go build caido check clean coverage fmt-check release test
 
 VERSION ?= dev
-COVERAGE_MIN ?= 60
+COVERAGE_MIN ?= 80
+COVERAGE_GOAL ?= 90
 
 all: build
 
@@ -18,8 +19,8 @@ fmt-check:
 coverage:
 	go test -coverprofile=coverage.out ./...
 	@total="$$(go tool cover -func=coverage.out | awk '/^total:/ { gsub("%", "", $$3); print $$3 }')"; \
-	awk -v total="$$total" -v minimum="$(COVERAGE_MIN)" 'BEGIN { \
-		printf "total coverage: %.1f%% (minimum %.1f%%)\n", total, minimum; \
+	awk -v total="$$total" -v minimum="$(COVERAGE_MIN)" -v goal="$(COVERAGE_GOAL)" 'BEGIN { \
+		printf "total coverage: %.1f%% (minimum %.1f%%, goal %.1f%%)\n", total, minimum, goal; \
 		if (total + 0 < minimum + 0) exit 1 \
 	}'
 

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -75,6 +76,74 @@ func TestParseRejectsMalformedClientHello(t *testing.T) {
 			t.Errorf("ParseClientHello(%x) unexpectedly succeeded", raw)
 		}
 	}
+	if _, err := FromClientHello(nil); err == nil {
+		t.Fatal("FromClientHello unexpectedly accepted empty input")
+	}
+}
+
+func TestParseMinimalClientHelloWithoutExtensions(t *testing.T) {
+	body := append(uint16Bytes(0x0303), make([]byte, 32)...)
+	body = append(body, 0)
+	body = appendVector16(body, uint16Bytes(0x1301))
+	body = append(body, 1, 0)
+	result, err := FromClientHello(wrapHandshake(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Version != "12" || result.SNI || result.ALPN != "00" {
+		t.Fatalf("unexpected minimal result: %+v", result)
+	}
+}
+
+func TestParseRejectsMalformedClientHelloFields(t *testing.T) {
+	validPrefix := append(uint16Bytes(0x0303), make([]byte, 32)...)
+	tests := map[string][]byte{
+		"random":              {3, 3},
+		"session length":      validPrefix,
+		"session":             append(append([]byte(nil), validPrefix...), 2, 1),
+		"cipher length":       append(append([]byte(nil), validPrefix...), 0, 0),
+		"odd ciphers":         append(append([]byte(nil), validPrefix...), 0, 0, 1, 1),
+		"compression length":  append(append([]byte(nil), validPrefix...), 0, 0, 2, 0x13, 0x01),
+		"compression methods": append(append([]byte(nil), validPrefix...), 0, 0, 2, 0x13, 0x01, 2, 0),
+	}
+	for name, body := range tests {
+		t.Run(name, func(t *testing.T) {
+			if _, err := ParseClientHello(wrapHandshake(body)); err == nil {
+				t.Fatalf("malformed %s unexpectedly succeeded", name)
+			}
+		})
+	}
+
+	base := append(append([]byte(nil), validPrefix...), 0, 0, 2, 0x13, 0x01, 1, 0)
+	for name, suffix := range map[string][]byte{
+		"extensions length": {0},
+		"extensions trailing": {
+			0, 0, 1,
+		},
+		"extension header": {0, 2, 0, 1},
+		"extension body":   {0, 4, 0, 13, 0, 2},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := ParseClientHello(wrapHandshake(append(append([]byte(nil), base...), suffix...))); err == nil {
+				t.Fatalf("malformed %s unexpectedly succeeded", name)
+			}
+		})
+	}
+}
+
+func TestTLSRecordStreamErrors(t *testing.T) {
+	for name, raw := range map[string][]byte{
+		"header":           {22, 3},
+		"non-handshake":    {23, 3, 3, 0, 0},
+		"interrupted":      {22, 3, 3, 0, 2, 1, 0, 23, 3, 3, 0, 0},
+		"oversized length": {22, 3, 3, 0, 4, 1, 0x10, 0, 1},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := ParseClientHello(raw); err == nil {
+				t.Fatal("malformed TLS record stream unexpectedly succeeded")
+			}
+		})
+	}
 }
 
 func TestALPNCode(t *testing.T) {
@@ -119,6 +188,64 @@ func TestGREASEIsExcludedEverywhere(t *testing.T) {
 	}
 	if result.CipherHashInput != "1301" || result.ExtensionHashInput != "000d_0403" {
 		t.Fatalf("GREASE remained in hash input: %+v", result)
+	}
+}
+
+func TestJA4EmptyFieldsAndCountCaps(t *testing.T) {
+	values := make([]uint16, 100)
+	for i := range values {
+		values[i] = uint16(i + 1)
+	}
+	result := CalculateJA4(ClientHello{LegacyVersion: 0x0301, CipherSuites: values, ExtensionIDs: values})
+	if !strings.HasPrefix(result.Fingerprint, "t10i999900_") {
+		t.Fatalf("counts were not capped: %s", result.Fingerprint)
+	}
+	empty := CalculateJA4(ClientHello{LegacyVersion: 0xffff})
+	if empty.Fingerprint != "t00i000000_000000000000_000000000000" {
+		t.Fatalf("empty JA4 = %q", empty.Fingerprint)
+	}
+}
+
+func TestVersionCodes(t *testing.T) {
+	for _, test := range []struct {
+		legacy    uint16
+		supported []uint16
+		want      string
+	}{
+		{0x0002, nil, "s2"},
+		{0x0300, nil, "s3"},
+		{0x0301, nil, "10"},
+		{0x0302, nil, "11"},
+		{0x0303, nil, "12"},
+		{0x0304, nil, "13"},
+		{0xfeff, nil, "d1"},
+		{0xfefd, nil, "d2"},
+		{0xfefc, nil, "d3"},
+		{0xffff, nil, "00"},
+		{0x0301, []uint16{0x0a0a, 0x0303, 0x0304}, "13"},
+		{0x0302, []uint16{0x1a1a}, "11"},
+	} {
+		if got := versionCode(test.legacy, test.supported); got != test.want {
+			t.Errorf("versionCode(%04x, %04x) = %q, want %q", test.legacy, test.supported, got, test.want)
+		}
+	}
+}
+
+func TestExtensionVectorErrors(t *testing.T) {
+	for name, test := range map[string]func() error{
+		"signature length": func() error { _, err := parseVector16Values(nil, "signatures"); return err },
+		"signature vector": func() error { _, err := parseVector16Values([]byte{0, 1, 4}, "signatures"); return err },
+		"versions length":  func() error { _, err := parseSupportedVersions(nil); return err },
+		"versions vector":  func() error { _, err := parseSupportedVersions([]byte{1, 3}); return err },
+		"ALPN length":      func() error { _, err := parseALPN(nil); return err },
+		"ALPN vector":      func() error { _, err := parseALPN([]byte{0, 2, 1}); return err },
+		"ALPN protocol":    func() error { _, err := parseALPN([]byte{0, 2, 2, 'h'}); return err },
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := test(); err == nil {
+				t.Fatal("invalid extension vector unexpectedly succeeded")
+			}
+		})
 	}
 }
 
@@ -198,6 +325,11 @@ func appendVector16(destination, value []byte) []byte {
 func appendTLSRecord(destination, handshake []byte) []byte {
 	destination = append(destination, 22, 3, 1, byte(len(handshake)>>8), byte(len(handshake)))
 	return append(destination, handshake...)
+}
+
+func wrapHandshake(body []byte) []byte {
+	handshake := []byte{1, byte(len(body) >> 16), byte(len(body) >> 8), byte(len(body))}
+	return append(handshake, body...)
 }
 
 func valuesBytes(values []uint16) []byte {

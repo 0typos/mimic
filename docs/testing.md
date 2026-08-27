@@ -9,8 +9,11 @@ make caido
 make build VERSION=0.1.0
 ```
 
-`make check` verifies formatting, runs race-enabled tests, enforces at least 60%
-statement coverage, and runs `go vet`. `make audit` scans reachable Go symbols
+`make check` verifies formatting, runs race-enabled tests, enforces an 80%
+statement-coverage floor, tracks a 90% maintained target, and runs `go vet`.
+The floor is the merge-blocking safety net; the target protects the existing
+margin as production code changes. Both values can be overridden locally with
+`COVERAGE_MIN` and `COVERAGE_GOAL`. `make audit` scans reachable Go symbols
 with a pinned `govulncheck` release and audits the Caido dependency tree. `make caido`
 installs the locked plugin toolchain, runs its protocol-framing tests, typechecks
 it, builds it, and validates the package manifest.
@@ -33,7 +36,9 @@ The Go suite includes:
 - negotiated HTTP/2 upstream translation;
 - Caido bridge framing and plaintext relay;
 - SOCKS5 TCP CONNECT and UDP relay;
-- CLI validation, CA creation, JA4 probe pass/mismatch, and daemon lifecycle.
+- CLI validation, CA creation, JA4 probe pass/mismatch, and daemon lifecycle;
+- control commands, live reload boundaries, protocol failure responses,
+  malformed TLS/SOCKS/Caido inputs, and listener lifecycle edge cases.
 
 All network tests bind loopback or use in-memory pipes. They do not contact
 external targets.
