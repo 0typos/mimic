@@ -44,7 +44,7 @@ for target in "${targets[@]}"; do
   CGO_ENABLED=0 GOOS="$target_os" GOARCH="$target_arch" \
     go build -trimpath -ldflags="-s -w -X main.version=$version" \
     -o "$package_dir/mimic" "$repo_root/cmd/mimic"
-  cp "$repo_root/README.md" "$repo_root/LICENSE" \
+  cp "$repo_root/README.md" "$repo_root/LICENSE" "$repo_root/LICENSE-JA4" \
     "$repo_root/CHANGELOG.md" "$repo_root/CONTRIBUTING.md" \
     "$repo_root/SECURITY.md" \
     "$repo_root/THIRD_PARTY_NOTICES.md" "$repo_root/config.example.toml" \

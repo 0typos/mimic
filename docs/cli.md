@@ -48,6 +48,33 @@ Reloadable fields include profiles, routes, runtime timeouts, legacy policy, and
 log level. Listener addresses, the control endpoint, logging format, and MITM CA
 configuration require a restart.
 
+## `mimic probe`
+
+```text
+mimic probe [-config PATH] -target HTTPS_URL [-profile NAME] [-expect JA4]
+            [-format text|json] [-raw]
+```
+
+Opens a TLS connection without sending an HTTP request, captures the
+ClientHello bytes Mimic actually writes, calculates JA4, and reports the
+negotiated TLS version, cipher, and ALPN. A hostname target defaults to port
+443; an `https://` URL is also accepted and its path/query are ignored.
+
+Without `-profile`, normal default and host-route selection applies. `-expect`
+overrides the selected profile's expected JA4 for this invocation. `-raw`
+includes sorted `JA4_r` and original-order `JA4_ro` evidence in text output;
+JSON output always contains the structured calculation inputs.
+
+Exit behavior:
+
+- success when observed and expected values match;
+- success with `UNVERIFIED` when the profile has no expected JA4;
+- failure after printing the report when values mismatch or TLS fails.
+
+The profile attempt is always the value used for comparison. If compatibility
+policy permits a legacy retry, both attempts appear in the report. Certificate
+verification and route policy are identical to daemon traffic.
+
 ## `mimic validate`
 
 ```text

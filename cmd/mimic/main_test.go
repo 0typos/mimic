@@ -3,6 +3,12 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -172,4 +178,108 @@ mode = "intercept"
 	if err := run([]string{"validate", "-config", configPath}, &output, &output); err == nil {
 		t.Fatal("expected invalid CA rejection")
 	}
+}
+
+func TestProbeReportsMatchingEmittedJA4(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	defer server.Close()
+	parsed, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, port, err := net.SplitHostPort(parsed.Host)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := "https://" + net.JoinHostPort("localhost", port)
+	configPath := writeProbeConfig(t)
+	var stdout, stderr bytes.Buffer
+	err = run([]string{"probe", "-config", configPath, "-profile", "chrome-133", "-target", target, "-format", "json"}, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("probe: %v, stderr=%s", err, stderr.String())
+	}
+	var report probeReport
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("decode report: %v\n%s", err, stdout.String())
+	}
+	if report.Status != "pass" || report.Match == nil || !*report.Match {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+	if report.ObservedJA4 == "" || report.ObservedJA4 != report.ExpectedJA4 {
+		t.Fatalf("unexpected fingerprints: %+v", report)
+	}
+	if len(report.Attempts) != 1 || report.Attempts[0].JA4 == nil || !report.Attempts[0].JA4.SNI {
+		t.Fatalf("missing ClientHello evidence: %+v", report.Attempts)
+	}
+}
+
+func TestProbeMismatchReturnsFailureAfterReport(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	defer server.Close()
+	parsed, _ := url.Parse(server.URL)
+	_, port, _ := net.SplitHostPort(parsed.Host)
+	target := "https://" + net.JoinHostPort("localhost", port)
+	var stdout, stderr bytes.Buffer
+	err := run([]string{
+		"probe", "-config", writeProbeConfig(t), "-profile", "chrome-133",
+		"-target", target, "-expect", "t13d000000_000000000000_000000000000", "-format", "json",
+	}, &stdout, &stderr)
+	if !errors.Is(err, errProbeMismatch) {
+		t.Fatalf("expected mismatch error, got %v", err)
+	}
+	var report probeReport
+	if decodeErr := json.Unmarshal(stdout.Bytes(), &report); decodeErr != nil {
+		t.Fatal(decodeErr)
+	}
+	if report.Status != "mismatch" || report.Match == nil || *report.Match {
+		t.Fatalf("unexpected mismatch report: %+v", report)
+	}
+}
+
+func TestProbeRejectsMalformedExpectationBeforeLoadingConfig(t *testing.T) {
+	var output bytes.Buffer
+	err := run([]string{"probe", "-target", "example.test", "-expect", "not-a-ja4"}, &output, &output)
+	if err == nil || !strings.Contains(err.Error(), "normalized JA4 fingerprint") {
+		t.Fatalf("expected malformed fingerprint error, got %v", err)
+	}
+}
+
+func TestNormalizeProbeTarget(t *testing.T) {
+	for _, test := range []struct {
+		raw, want string
+	}{
+		{"https://example.test/path?q=1", "example.test:443"},
+		{"example.test", "example.test:443"},
+		{"example.test:8443", "example.test:8443"},
+		{"2001:db8::1", "[2001:db8::1]:443"},
+	} {
+		got, err := normalizeProbeTarget(test.raw)
+		if err != nil || got != test.want {
+			t.Errorf("normalizeProbeTarget(%q) = %q, %v; want %q", test.raw, got, err, test.want)
+		}
+	}
+	for _, raw := range []string{"", "http://example.test", "https://user@example.test", "bad/path"} {
+		if _, err := normalizeProbeTarget(raw); err == nil {
+			t.Errorf("normalizeProbeTarget(%q) unexpectedly succeeded", raw)
+		}
+	}
+}
+
+func writeProbeConfig(t *testing.T) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.toml")
+	body := `
+version = 1
+[legacy]
+insecure_skip_verify = true
+[[listeners]]
+name = "http"
+protocol = "http"
+listen = "tcp://127.0.0.1:0"
+mode = "tunnel"
+`
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
 }

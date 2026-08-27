@@ -19,6 +19,8 @@ Implemented today:
 
 - named and captured uTLS ClientHello profiles;
 - pinned Chrome, Firefox, Safari, iOS, and Android presets;
+- JA4 calculation from the ClientHello bytes actually written to the network;
+- profile conformance probes with text/JSON evidence and mismatch exit status;
 - per-host routing and live default-profile changes;
 - HTTP forward proxy listeners on TCP and Unix sockets;
 - opaque CONNECT tunneling and optional CA-backed HTTPS interception;
@@ -38,6 +40,7 @@ binary and do not require Go, Node, OpenSSL, or separate runtime assets.
 cp config.example.toml config.toml
 make build VERSION=0.1.0
 ./mimic validate -config ./config.toml
+./mimic probe -config ./config.toml -profile chrome-133 -target https://example.com
 ./mimic daemon -config ./config.toml
 ```
 
@@ -82,10 +85,13 @@ not be shared or imported into a trust store.
 ## Fingerprint scope
 
 Mimic controls the client-side TLS ClientHello and, when it handles plaintext
-HTTP, the HTTP identity. The configured `ja4` and `ja4h` values are descriptive
-metadata; Mimic does not yet calculate them or certify that an arbitrary sensor
-will report those exact values. Validate important profiles against a controlled
-sensor.
+HTTP, the HTTP identity. `mimic probe` calculates JA4 from the exact ClientHello
+bytes written by uTLS and compares it with the profile's expected value. Bundled
+expectations are regression fixtures for Mimic's pinned uTLS presets; they do
+not by themselves certify parity with a real browser or every sensor.
+
+JA4H remains optional operator metadata and is not calculated. Validate
+important TLS and HTTP profiles against a controlled external sensor.
 
 JA4S and JA4X describe server-side behavior and certificates. They are not
 generally properties an outbound client proxy can reproduce. HTTP/2 uses Go's
@@ -134,6 +140,7 @@ Mimic supports TLS 1.0 through TLS 1.3. It does not support SSLv2 or SSLv3.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes. Mimic is
 licensed under the [MIT License](LICENSE). Dependency licensing is summarized in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). JA4 TLS fingerprinting is
+covered by the separate [FoxIO JA4 license](LICENSE-JA4).
 
 Use Mimic only with systems and traffic you are authorized to test.

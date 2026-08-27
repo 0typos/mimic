@@ -20,6 +20,8 @@ make caido
 
 - Add tests for observable behavior and failure paths.
 - Keep fingerprint claims measurable and avoid calling metadata “verified.”
+- Do not implement non-JA4 methods from the JA4+ family without first reviewing
+  and documenting their separate licensing requirements.
 - Preserve strict TOML validation and document new fields.
 - Treat new network binds, trust changes, downgrade behavior, and subprocesses
   as security-sensitive design changes.

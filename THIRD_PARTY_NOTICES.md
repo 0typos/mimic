@@ -18,6 +18,13 @@ license files distributed by each dependency are authoritative.
 
 Exact versions and cryptographic hashes are recorded in `go.mod` and `go.sum`.
 
+## JA4 TLS fingerprinting
+
+Mimic includes an independent implementation of FoxIO's JA4 TLS client
+fingerprinting specification. JA4 was created by FoxIO and is distributed under
+its BSD-style license, reproduced in `LICENSE-JA4`. This implementation does not
+calculate separately licensed JA4+ methods such as JA4H, JA4S, or JA4X.
+
 ## Caido build dependencies
 
 The plugin build uses the Caido SDK, Caido community build tooling, TypeScript,

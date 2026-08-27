@@ -88,6 +88,78 @@ func TestTLSDialerLegacyRetry(t *testing.T) {
 	}
 }
 
+func TestTLSDialerProbeCapturesEmittedClientHello(t *testing.T) {
+	listener, _ := startTLSServer(t, &tls.Config{
+		Certificates: []tls.Certificate{selfSignedRSA(t)},
+		MinVersion:   tls.VersionTLS12,
+		NextProtos:   []string{"h2", "http/1.1"},
+	})
+	defer listener.Close()
+	state := tlsTestState(t, false)
+	dialer := NewTLSDialer(state, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	result, err := dialer.Probe(ctx, listener.Addr().String(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Profile != "chrome-133" || len(result.Attempts) != 1 {
+		t.Fatalf("unexpected probe result: %+v", result)
+	}
+	attempt := result.Attempts[0]
+	if attempt.JA4 == nil || attempt.JA4.Fingerprint == "" || attempt.FingerprintError != "" {
+		t.Fatalf("missing captured JA4: %+v", attempt)
+	}
+	if attempt.CapturedBytes == 0 || attempt.NegotiatedVersion == "" || attempt.Cipher == "" {
+		t.Fatalf("missing handshake details: %+v", attempt)
+	}
+	if attempt.JA4.SNI {
+		t.Fatalf("IP target unexpectedly emitted SNI: %+v", attempt.JA4)
+	}
+}
+
+func TestBuiltinProfileJA4Values(t *testing.T) {
+	listener, versions := startTLSServer(t, &tls.Config{
+		Certificates: []tls.Certificate{selfSignedRSA(t)},
+		MinVersion:   tls.VersionTLS12,
+		NextProtos:   []string{"h2", "http/1.1"},
+	})
+	defer listener.Close()
+	state := tlsTestState(t, false)
+	cfg := state.Snapshot().Config
+	cfg.Legacy.InsecureSkipVerify = true
+	registry, err := profiles.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err = New(cfg, registry, new(slog.LevelVar))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dialer := NewTLSDialer(state, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, port, _ := net.SplitHostPort(listener.Addr().String())
+	target := net.JoinHostPort("localhost", port)
+	for _, name := range []string{"chrome-133", "firefox-120", "safari-16", "ios-14", "android-11"} {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		result, probeErr := dialer.Probe(ctx, target, name)
+		cancel()
+		if probeErr != nil {
+			t.Fatalf("probe %s: %v", name, probeErr)
+		}
+		if len(result.Attempts) != 1 || result.Attempts[0].JA4 == nil {
+			t.Fatalf("probe %s did not capture JA4: %+v", name, result)
+		}
+		if result.ExpectedJA4 == "" || result.Attempts[0].JA4.Fingerprint != result.ExpectedJA4 {
+			t.Fatalf("probe %s JA4 = %q, want %q", name, result.Attempts[0].JA4.Fingerprint, result.ExpectedJA4)
+		}
+		select {
+		case <-versions:
+		case <-time.After(time.Second):
+			t.Fatalf("server did not complete %s handshake", name)
+		}
+	}
+}
+
 func TestRetryPolicyHelpers(t *testing.T) {
 	if !retryable(context.DeadlineExceeded, []string{"deadline"}) {
 		t.Fatal("expected retry fragment match")

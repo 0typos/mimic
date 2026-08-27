@@ -16,6 +16,10 @@
 4. CLI/plugin to the local control endpoint.
 5. Mimic to DNS and the upstream target.
 
+The `probe` command opens the configured target's TLS connection but sends no
+HTTP request. It uses the same certificate-verification and legacy policy as
+proxied traffic.
+
 ## Defenses
 
 - Example TCP/UDP listeners bind loopback and use explicit loopback CIDRs.

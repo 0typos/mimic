@@ -68,7 +68,7 @@ allow_cidrs = ["127.0.0.0/8", "::1/128"]
 # A saved profile can name a stable uTLS preset...
 [profiles.corporate-chrome]
 hello = "chrome-133"
-ja4 = "replace-with-observed-ja4"
+ja4 = "t13d1516h2_8daaf6152771_d8a2da3f94cd"
 ja4h = "replace-with-observed-ja4h"
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
 header_order = ["host", "connection", "user-agent", "accept", "accept-encoding", "accept-language", "cookie"]

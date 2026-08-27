@@ -8,23 +8,25 @@ validation so malformed files fail before traffic is accepted.
 
 The daemon always provides:
 
-| Name | uTLS preset |
-|---|---|
-| `chrome-133` | Chrome 133 |
-| `firefox-120` | Firefox 120 |
-| `safari-16` | Safari 16.0 |
-| `ios-14` | iOS 14 |
-| `android-11` | Android 11 OkHttp |
+| Name | uTLS preset | Expected emitted JA4 |
+|---|---|---|
+| `chrome-133` | Chrome 133 | `t13d1516h2_8daaf6152771_d8a2da3f94cd` |
+| `firefox-120` | Firefox 120 | `t13d1715h2_5b57614c22b0_5c2c66f702b0` |
+| `safari-16` | Safari 16.0 | `t13d2014h2_a09f3c656075_14788d8d241b` |
+| `ios-14` | iOS 14 | `t13d2613h2_2802a3db6c62_845d286b0d67` |
+| `android-11` | Android 11 OkHttp | `t12d120700_d34a8e72043a_036209cd1ead` |
 
 These names are stable within the `0.x` series. They are intentionally pinned;
 updating Mimic does not silently turn `chrome-133` into a different browser.
+Expected values describe a fresh connection to a DNS hostname using the pinned
+uTLS version. They are regression fixtures, not claims about a current browser.
 
 ## Preset-backed custom profile
 
 ```toml
 [profiles.lab-chrome]
 hello = "chrome-133"
-ja4 = "expected-ja4-metadata"
+ja4 = "t13d1516h2_8daaf6152771_d8a2da3f94cd"
 ja4h = "expected-ja4h-metadata"
 user_agent = "Mozilla/5.0 ... Chrome/133.0.0.0 Safari/537.36"
 header_order = ["host", "connection", "user-agent", "accept", "cookie"]
@@ -74,8 +76,21 @@ before forwarding. The Caido bridge carries this value out-of-band instead.
 HTTP/2 requests use the same header values but Go's HTTP/2 encoder controls
 pseudo-header, HPACK, SETTINGS, and frame behavior.
 
-## JA4 metadata
+## JA4 verification
 
-`ja4` and `ja4h` are labels for operator reference. They are not validation
-assertions. Reported fingerprints can change with SNI presence, ALPN, GREASE,
-session resumption, the edited request, cookies, or the sensor implementation.
+`ja4` is the expected TLS fingerprint used by `mimic probe`. The calculator
+operates on captured outbound bytes and follows FoxIO's JA4 TLS specification,
+including GREASE exclusion. Run:
+
+```sh
+mimic probe -config ./config.toml -profile lab-chrome -target https://example.com
+mimic probe -config ./config.toml -profile lab-chrome -target https://example.com -format json
+```
+
+SNI presence changes JA4, so a built-in expectation for a DNS hostname will not
+match an IP-address target. Session resumption or a future uTLS change can also
+change the extension set; a mismatch is intentionally a failing probe.
+
+`ja4h` remains operator-provided metadata. Mimic does not calculate JA4H because
+it is governed separately from the BSD-licensed JA4 TLS method. HTTP edits,
+cookies, and sensor behavior can change the externally observed value.

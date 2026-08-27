@@ -14,6 +14,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"golang.org/x/net/http/httpguts"
+
+	"github.com/msmythe/mimic/internal/fingerprint"
 )
 
 type Config struct {
@@ -273,6 +275,13 @@ func (c Config) Validate() error {
 		}
 		if minVersion != 0 && maxVersion != 0 && minVersion > maxVersion {
 			errs = append(errs, fmt.Errorf("profiles.%s.min_version cannot be higher than max_version", name))
+		}
+		if p.JA4 != "" {
+			if err := fingerprint.ValidateJA4(p.JA4); err != nil {
+				errs = append(errs, fmt.Errorf("profiles.%s.ja4: %w", name, err))
+			} else if p.JA4[0] != 't' {
+				errs = append(errs, fmt.Errorf("profiles.%s.ja4 must describe TLS over TCP", name))
+			}
 		}
 		if p.UserAgent != "" && !httpguts.ValidHeaderFieldValue(p.UserAgent) {
 			errs = append(errs, fmt.Errorf("profiles.%s.user_agent is not a valid HTTP header value", name))

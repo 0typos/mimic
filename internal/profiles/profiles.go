@@ -119,27 +119,27 @@ func fromConfig(name string, definition config.Profile) (Profile, error) {
 func builtin() map[string]Profile {
 	return map[string]Profile{
 		"chrome-133": {
-			Name: "chrome-133", Hello: utls.HelloChrome_133,
+			Name: "chrome-133", Hello: utls.HelloChrome_133, JA4: "t13d1516h2_8daaf6152771_d8a2da3f94cd",
 			UserAgent:   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
 			HeaderOrder: []string{"host", "connection", "sec-ch-ua", "sec-ch-ua-mobile", "sec-ch-ua-platform", "upgrade-insecure-requests", "user-agent", "accept", "sec-fetch-site", "sec-fetch-mode", "sec-fetch-user", "sec-fetch-dest", "accept-encoding", "accept-language", "cookie"},
 		},
 		"firefox-120": {
-			Name: "firefox-120", Hello: utls.HelloFirefox_120,
+			Name: "firefox-120", Hello: utls.HelloFirefox_120, JA4: "t13d1715h2_5b57614c22b0_5c2c66f702b0",
 			UserAgent:   "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0",
 			HeaderOrder: []string{"host", "user-agent", "accept", "accept-language", "accept-encoding", "connection", "upgrade-insecure-requests", "sec-fetch-dest", "sec-fetch-mode", "sec-fetch-site", "sec-fetch-user", "cookie"},
 		},
 		"safari-16": {
-			Name: "safari-16", Hello: utls.HelloSafari_16_0,
+			Name: "safari-16", Hello: utls.HelloSafari_16_0, JA4: "t13d2014h2_a09f3c656075_14788d8d241b",
 			UserAgent:   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15",
 			HeaderOrder: []string{"host", "accept", "user-agent", "accept-language", "accept-encoding", "connection", "cookie"},
 		},
 		"ios-14": {
-			Name: "ios-14", Hello: utls.HelloIOS_14,
+			Name: "ios-14", Hello: utls.HelloIOS_14, JA4: "t13d2613h2_2802a3db6c62_845d286b0d67",
 			UserAgent:   "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1",
 			HeaderOrder: []string{"host", "accept", "user-agent", "accept-language", "accept-encoding", "connection", "cookie"},
 		},
 		"android-11": {
-			Name: "android-11", Hello: utls.HelloAndroid_11_OkHttp,
+			Name: "android-11", Hello: utls.HelloAndroid_11_OkHttp, JA4: "t12d120700_d34a8e72043a_036209cd1ead",
 			UserAgent:   "okhttp/4.9.3",
 			HeaderOrder: []string{"host", "connection", "accept-encoding", "user-agent", "cookie"},
 		},

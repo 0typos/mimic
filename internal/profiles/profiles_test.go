@@ -15,8 +15,12 @@ func TestRegistryIncludesBuiltinsAndCustomPreset(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := registry.Get("chrome-133"); !ok {
+	builtin, ok := registry.Get("chrome-133")
+	if !ok {
 		t.Fatal("chrome builtin missing")
+	}
+	if builtin.JA4 == "" {
+		t.Fatal("chrome builtin has no expected JA4")
 	}
 	p, ok := registry.Get("lab")
 	if !ok || p.JA4 != "expected" || p.Hello.Version != "99" {

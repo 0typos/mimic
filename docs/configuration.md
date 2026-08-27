@@ -90,8 +90,11 @@ unfragmented datagrams; SOCKS fragmentation is rejected.
 ## `[profiles.NAME]`
 
 See [profiles.md](profiles.md). Each profile selects exactly one of `hello` or
-`client_hello_file`. Optional fields are `ja4`, `ja4h`, `user_agent`,
+`client_hello_file`. Optional fields are `ja4` (the probe expectation), `ja4h`
+(operator metadata), `user_agent`,
 `header_order`, `headers`, `min_version`, and `max_version`.
+Configured `ja4` values must use the normalized, lowercase hashed TLS-over-TCP
+form, such as `t13d1516h2_8daaf6152771_d8a2da3f94cd`.
 
 ## `[[routes]]`
 

@@ -107,6 +107,9 @@ func TestValidationRejectsOperationallyInvalidValues(t *testing.T) {
 		{"header value", func(c *Config) {
 			c.Profiles["bad"] = Profile{Hello: "chrome-133", Headers: map[string]string{"X-Test": "one\ntwo"}}
 		}, "valid HTTP header value"},
+		{"JA4 shape", func(c *Config) {
+			c.Profiles["bad"] = Profile{Hello: "chrome-133", JA4: "not-a-ja4"}
+		}, "normalized JA4"},
 		{"profile versions", func(c *Config) {
 			c.Profiles["bad"] = Profile{Hello: "chrome-133", MinVersion: "tls1.3", MaxVersion: "tls1.2"}
 		}, "min_version cannot"},

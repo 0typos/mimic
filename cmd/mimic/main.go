@@ -40,6 +40,8 @@ func run(args []string, stdout, stderr io.Writer) error {
 	switch args[0] {
 	case "daemon":
 		return daemon(args[1:], stderr)
+	case "probe":
+		return probe(args[1:], stdout, stderr)
 	case "ctl":
 		return ctl(args[1:], stdout)
 	case "validate":
@@ -261,6 +263,7 @@ func usage(writer io.Writer) {
 
 Usage:
   mimic daemon [-config PATH]
+  mimic probe [-config PATH] -target HTTPS_URL [-profile NAME] [-expect JA4] [-format text|json] [-raw]
   mimic ctl [-config PATH] info|status|profiles|use PROFILE|log-level LEVEL|reload|shutdown
   mimic validate [-config PATH]
   mimic init-ca [-cert PATH] [-key PATH]
