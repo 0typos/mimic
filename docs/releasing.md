@@ -8,9 +8,11 @@ should use the same version for coordinated releases.
 1. Update `CHANGELOG.md` and remove any unresolved release blockers.
 2. Update the version in `integrations/caido/caido.config.ts` and both plugin
    `package.json` files.
-3. Run `make check audit caido` from a clean checkout.
+3. Install `uv`, then run `make check audit caido lab-check` from a clean
+   checkout.
 4. Run `./scripts/build-release.sh 0.1.0` and inspect every archive.
-5. Extract an archive and run `./lab/run.sh up && ./lab/run.sh smoke` from it.
+5. Extract an archive and run
+   `./lab/mimic-lab up && ./lab/mimic-lab check` from it.
 6. Complete the manual checks in `docs/testing.md`.
 
 Run the packaging script on Linux with GNU tar. Set `SOURCE_DATE_EPOCH` to a

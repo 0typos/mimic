@@ -24,6 +24,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - run: corepack enable
       - name: Choose version
         id: version
@@ -35,11 +36,11 @@ jobs:
             echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
           fi
       - run: make lab-check
-      - run: ./lab/run.sh up
-      - run: ./lab/run.sh smoke
+      - run: ./lab/mimic-lab up
+      - run: ./lab/mimic-lab check
       - name: Stop tutorial lab
         if: always()
-        run: ./lab/run.sh down
+        run: ./lab/mimic-lab down
       - run: make release VERSION="${{ steps.version.outputs.value }}"
       - uses: actions/upload-artifact@v7
         with:

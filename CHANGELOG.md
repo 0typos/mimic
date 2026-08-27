@@ -24,3 +24,5 @@ Semantic Versioning once public tags begin.
 - A sub-five-minute quickstart and comprehensive hands-on tutorial backed by a
   deterministic Docker Compose lab for modern TLS, TLS 1.0 fallback, all proxy
   paths, live control, Burp, and Caido.
+- A locked PEP 723 `uv` launcher for running or installing the tutorial lab
+  without manually managing a Python environment.

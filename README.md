@@ -37,14 +37,15 @@ The [five-minute quickstart](docs/quickstart.md) builds a disposable local lab
 and proves JA4 conformance, profiled HTTP, and HTTPS interception:
 
 ```sh
-./lab/run.sh up
-./lab/run.sh demo
+./lab/mimic-lab up
+./lab/mimic-lab demo
 ```
 
 Continue with the [complete hands-on tutorial](docs/tutorial.md) for routes,
 live control, legacy TLS, SOCKS, the Caido plugin, and Burp Suite. The lab uses
-Docker Compose, starts in two to three minutes on a typical development machine,
-and never installs its CA into the host trust store.
+a locked, self-contained `uv` script plus Docker Compose, starts in two to three
+minutes on a typical development machine, and never installs its CA into the
+host trust store.
 
 For a native build, Mimic requires Go 1.25 or newer. Release archives contain a
 standalone binary that needs no Go or Node runtime for normal operation:

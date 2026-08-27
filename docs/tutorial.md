@@ -31,11 +31,14 @@ self-signed origins. Never copy those values into a production configuration.
 
 ## 2. Start and inspect the environment
 
-Prerequisites are Docker with Compose v2.20+ and `curl`. From a source checkout
-or release archive:
+Prerequisites are [`uv`](https://docs.astral.sh/uv/getting-started/installation/),
+Docker with Compose v2.20+, and `curl`. The executable launcher declares and
+locks its Python dependencies, so there is no virtual environment to create or
+activate. From a source checkout or release archive:
 
 ```sh
-time ./lab/run.sh up
+uv --version
+time ./lab/mimic-lab up
 docker compose -f lab/compose.yaml ps
 ```
 
@@ -46,12 +49,15 @@ If startup fails, see [Troubleshooting](#12-troubleshooting).
 View the loaded profiles and daemon state:
 
 ```sh
-./lab/run.sh profiles
-./lab/run.sh status
+./lab/mimic-lab profiles
+./lab/mimic-lab status
 ```
 
 The control endpoint stays inside the container on loopback. The wrapper runs
 the same `mimic ctl` binary in that container; there is no separate admin API.
+For frequent use, `./lab/mimic-lab install` creates a guarded symlink in `uv`'s
+executable directory. You can then run commands such as `mimic-lab status` from
+any directory and remove the link with `mimic-lab uninstall`.
 
 ## 3. Verify the emitted JA4
 
@@ -205,7 +211,7 @@ curl --noproxy "" --proxy http://127.0.0.1:18081 \
   --cacert lab/.state/mimic-ca.pem \
   https://legacy-origin:9443/inspect?lesson=legacy
 
-./lab/run.sh status
+./lab/mimic-lab status
 ```
 
 The daemon's `tls_fallbacks` counter increases. A certificate validation error
@@ -287,7 +293,7 @@ upstream TLS connection. Each side must trust the CA presented directly to it:
    and proxy port `18081`. Add `legacy-origin` separately if desired.
 4. Send `https://modern-origin:8443/inspect` from Burp's browser or Repeater.
 5. Confirm the response shows the routed Chrome user agent and modern TLS, then
-   inspect `./lab/run.sh logs` for the selected profile.
+   inspect `./lab/mimic-lab logs` for the selected profile.
 
 Do not point Burp at port `18080` when the goal is fingerprint replacement:
 that tunnel listener sees only Burp's opaque CONNECT payload. Start with narrow
@@ -302,7 +308,7 @@ and [Burp browser/CA setup](https://portswigger.net/burp/documentation/desktop/e
 Follow logs and change verbosity live:
 
 ```sh
-./lab/run.sh logs
+./lab/mimic-lab logs
 
 docker compose -f lab/compose.yaml exec -T mimic \
   mimic ctl -socket tcp://127.0.0.1:9090 log-level debug
@@ -313,7 +319,7 @@ connections, handled requests, legacy fallbacks, uptime, and current profile.
 The one-command regression tour is useful after configuration changes:
 
 ```sh
-./lab/run.sh smoke
+./lab/mimic-lab check
 ```
 
 ## 12. Troubleshooting
@@ -332,14 +338,14 @@ The one-command regression tour is useful after configuration changes:
 - **JA4 mismatch:** use `mimic probe -raw`, verify the profile and DNS hostname,
   and compare both values. An IP target changes the SNI-related JA4 field.
 - **Reload rejected:** listener, control, and MITM endpoint changes require
-  `./lab/run.sh down && ./lab/run.sh up`.
+  `./lab/mimic-lab down && ./lab/mimic-lab up`.
 
 ## 13. Clean up and move toward deployment
 
 Stop and remove the lab containers and network:
 
 ```sh
-./lab/run.sh down
+./lab/mimic-lab down
 ```
 
 Compose deliberately preserves `lab/.state/` for fast restarts. The only trust

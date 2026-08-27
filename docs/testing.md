@@ -20,20 +20,20 @@ installs the locked plugin toolchain, runs its protocol-framing tests, typecheck
 it, builds it, and validates the package manifest.
 
 `make lab-check` compiles and tests the build-tagged deterministic origin,
-validates the Compose model, and checks the shell entry points without starting
-containers.
+verifies the PEP 723 launcher's `uv` lock and CLI, validates the Compose model,
+and checks the container shell entry point without starting containers.
 
 ## Tutorial lab
 
 The CI lab job performs the public workflow against real containers:
 
 ```sh
-./lab/run.sh up
-./lab/run.sh smoke
-./lab/run.sh down
+./lab/mimic-lab up
+./lab/mimic-lab check
+./lab/mimic-lab down
 ```
 
-The smoke tour verifies modern JA4 conformance, profiled HTTP, HTTPS
+The check tour verifies modern JA4 conformance, profiled HTTP, HTTPS
 interception with the generated CA, live profile changes, route precedence,
 actual TLS 1.0 fallback, SOCKS identity preservation, the Caido bridge, the
 Unix-socket listener, live log-level/profile evidence, and daemon counters. The

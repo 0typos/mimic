@@ -41,8 +41,10 @@ caido:
 
 lab-check:
 	go test -tags lab ./lab/cmd/lab-origin
+	uv lock --script lab/mimic-lab --check
+	./lab/mimic-lab --help >/dev/null
 	docker compose -f lab/compose.yaml config --quiet
-	bash -n lab/run.sh lab/start-mimic.sh
+	bash -n lab/start-mimic.sh
 
 release: check audit caido lab-check
 	./scripts/build-release.sh "$(VERSION)"

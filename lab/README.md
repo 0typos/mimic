@@ -8,15 +8,33 @@ no CA is added to the host trust store.
 
 ## Commands
 
+Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) first.
+The executable PEP 723 launcher uses its adjacent lockfile, so `uv` supplies the
+exact Python dependencies without a manually managed virtual environment.
+
 ```sh
-./lab/run.sh up        # build and wait for healthy services (target: <3 min)
-./lab/run.sh demo      # three-step, five-minute quickstart
-./lab/run.sh smoke     # verify every lab transport and control workflow
-./lab/run.sh status    # daemon profile, counters, and uptime
-./lab/run.sh profiles  # available profiles
-./lab/run.sh logs      # follow daemon logs (Ctrl-C exits log view)
-./lab/run.sh down      # remove containers and network
+./lab/mimic-lab up        # build and wait for healthy services (target: <3 min)
+./lab/mimic-lab demo      # three-step, five-minute quickstart
+./lab/mimic-lab check     # verify every lab transport and control workflow
+./lab/mimic-lab status    # daemon profile, counters, and uptime
+./lab/mimic-lab profiles  # available profiles
+./lab/mimic-lab logs      # follow daemon logs (Ctrl-C exits log view)
+./lab/mimic-lab down      # remove containers and network
 ```
+
+Run `./lab/mimic-lab install` to make `mimic-lab` available from any directory.
+It creates a guarded symlink in `uv tool dir --bin`; `mimic-lab uninstall`
+removes only a symlink that points back to this checkout.
+
+| File | Purpose |
+|---|---|
+| `mimic-lab` | PEP 723 `uv` CLI for `up`, `demo`, `check`, operation, and installation |
+| `mimic-lab.lock` | Resolved Python versions and package hashes for reproducible runs |
+| `compose.yaml` | Isolated Mimic and deterministic-origin services |
+| `mimic.toml` | Lab-only profiles, routes, listeners, and legacy policy |
+
+The first launcher run fetches Typer and its dependencies into `uv`'s cache;
+subsequent runs reuse that environment.
 
 The generated lab CA and key remain in the ignored `lab/.state/` directory so
 restarts are quick. Delete that directory after `down` if you want to remove
@@ -36,13 +54,13 @@ upstream certificate verification in `mimic.toml` are safe only inside this
 isolated lab and must not be copied into a deployed configuration.
 
 The lab also creates an HTTP proxy Unix socket at
-`/etc/mimic/.state/http.sock` inside the Mimic container. The smoke command
+`/etc/mimic/.state/http.sock` inside the Mimic container. The `check` command
 exercises it from the same container so its `0600` permissions remain portable
 across Docker hosts.
 
 ## Troubleshooting
 
-Run `docker compose -f lab/compose.yaml ps` and `./lab/run.sh logs`. A local
+Run `docker compose -f lab/compose.yaml ps` and `./lab/mimic-lab logs`. A local
 service already using port `7777`, `11080`, `18080`, or `18081` must be stopped
 or the corresponding host-side mapping changed. Rebuild after source changes
-with `./lab/run.sh up`; Compose reuses unchanged layers.
+with `./lab/mimic-lab up`; Compose reuses unchanged layers.
