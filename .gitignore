@@ -1,0 +1,10 @@
+/mimic
+/coverage.out
+/certs/
+/config.toml
+/integrations/caido/node_modules/
+/integrations/caido/packages/*/node_modules/
+/integrations/caido/dist/
+/integrations/caido/packages/*/dist/
+/mimic-static
+/dist/

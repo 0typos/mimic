@@ -1,0 +1,32 @@
+[Unit]
+Description=Mimic fingerprint-aware compatibility proxy
+Documentation=https://github.com/msmythe/mimic
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mimic
+Group=mimic
+RuntimeDirectory=mimic
+RuntimeDirectoryMode=0750
+UMask=0077
+ExecStart=/usr/local/bin/mimic daemon -config /etc/mimic/config.toml
+Restart=on-failure
+RestartSec=2s
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

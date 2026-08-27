@@ -1,0 +1,17 @@
+{
+  "name": "mimic-caido",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.24.0",
+  "scripts": {
+    "build": "caido-dev build",
+    "test": "corepack pnpm --recursive test",
+    "typecheck": "corepack pnpm --recursive typecheck",
+    "watch": "caido-dev watch"
+  },
+  "devDependencies": {
+    "@caido-community/dev": "0.1.7",
+    "typescript": "5.7.3"
+  }
+}

@@ -1,0 +1,90 @@
+version = 1
+
+[control]
+# The CLI uses the same endpoint. TCP loopback is also supported.
+listen = "unix:///tmp/mimic/control.sock"
+
+[logging]
+level = "info"                 # debug | info | warn | error
+format = "text"                # text | json
+
+[runtime]
+default_profile = "chrome-133"
+connect_timeout = "10s"
+handshake_timeout = "15s"
+
+[mitm]
+# Required only for an HTTP listener in intercept mode. Generate these with:
+#   mimic init-ca -cert ./certs/mimic-ca.pem -key ./certs/mimic-ca-key.pem
+enabled = false
+ca_cert = "./certs/mimic-ca.pem"
+ca_key = "./certs/mimic-ca-key.pem"
+leaf_ttl = "168h"
+
+[legacy]
+# Legacy support is loaded by default, but retries are bounded to this host list.
+# The pure-Go engine supports TLS 1.0 through TLS 1.3; it does not claim SSLv3.
+enabled = true
+min_version = "tls1.0"
+retry = true
+retry_on = ["protocol version", "handshake failure", "insufficient security", "no cipher suite"]
+allow_hosts = ["localhost", "127.0.0.1", "*.lab.example"]
+insecure_skip_verify = false
+
+[[listeners]]
+name = "http"
+protocol = "http"
+listen = "tcp://127.0.0.1:8080"
+mode = "tunnel"                # tunnel leaves CONNECT TLS untouched
+allow_cidrs = ["127.0.0.0/8", "::1/128"]
+
+[[listeners]]
+name = "unix-http"
+protocol = "http"
+listen = "unix:///tmp/mimic/http.sock"
+mode = "tunnel"
+
+[[listeners]]
+name = "socks"
+protocol = "socks5"
+listen = "tcp://127.0.0.1:1080"
+udp_listen = "udp://127.0.0.1:1080"
+allow_cidrs = ["127.0.0.0/8", "::1/128"]
+
+[[listeners]]
+name = "caido"
+protocol = "caido"
+listen = "tcp://127.0.0.1:7777"
+allow_cidrs = ["127.0.0.0/8", "::1/128"]
+
+# Uncomment after enabling [mitm] and generating/trusting the CA.
+# [[listeners]]
+# name = "intercept"
+# protocol = "http"
+# listen = "tcp://127.0.0.1:8081"
+# mode = "intercept"
+# allow_cidrs = ["127.0.0.0/8", "::1/128"]
+
+# A saved profile can name a stable uTLS preset...
+[profiles.corporate-chrome]
+hello = "chrome-133"
+ja4 = "replace-with-observed-ja4"
+ja4h = "replace-with-observed-ja4h"
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+header_order = ["host", "connection", "user-agent", "accept", "accept-encoding", "accept-language", "cookie"]
+
+[profiles.corporate-chrome.headers]
+Accept-Language = "en-US,en;q=0.9"
+
+# ...or load a binary/hex-encoded captured TLS record for exact extension order:
+# [profiles.captured-device]
+# client_hello_file = "./profiles/device-clienthello.hex"
+# ja4 = "t13d..."
+# user_agent = "DeviceClient/1.0"
+# header_order = ["host", "user-agent", "accept"]
+
+[[routes]]
+host = "*.lab.example"
+profile = "corporate-chrome"
+legacy_retry = true
+insecure_skip_verify = false
