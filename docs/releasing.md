@@ -6,8 +6,8 @@ should use the same version for coordinated releases.
 ## Prepare
 
 1. Update `CHANGELOG.md` and remove any unresolved release blockers.
-2. Update the version in `integrations/caido/caido.config.ts` and both plugin
-   `package.json` files.
+2. Update the version in `integrations/caido/caido.config.ts` and every plugin
+   `package.json` file.
 3. Install `uv`, then run `make check audit caido lab-check` from a clean
    checkout.
 4. Run `./scripts/build-release.sh 0.1.0` and inspect every archive.

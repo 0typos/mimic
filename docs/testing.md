@@ -17,7 +17,9 @@ margin as production code changes. Both values can be overridden locally with
 `COVERAGE_MIN` and `COVERAGE_GOAL`. `make audit` scans reachable Go symbols
 with a pinned `govulncheck` release and audits the Caido dependency tree. `make caido`
 installs the locked plugin toolchain, runs its protocol-framing tests, typechecks
-it, builds it, and validates the package manifest.
+it, builds the backend and Vue frontend, and validates the package manifest.
+The plugin tests cover bridge framing, persistent settings, control responses,
+profile selection, and frontend view-model behavior.
 
 `make lab-check` compiles and tests the build-tagged deterministic origin,
 verifies the PEP 723 launcher's `uv` lock and CLI, validates the Compose model,
@@ -36,8 +38,9 @@ The CI lab job performs the public workflow against real containers:
 The check tour verifies modern JA4 conformance, profiled HTTP, HTTPS
 interception with the generated CA, live profile changes, route precedence,
 actual TLS 1.0 fallback, SOCKS identity preservation, the Caido bridge, the
-Unix-socket listener, live log-level/profile evidence, and daemon counters. The
-`down` step runs even if an assertion fails.
+Unix-socket listener, the host control path used by the Caido UI, live
+log-level/profile evidence, and daemon counters. The `down` step runs even if
+an assertion fails.
 
 ## Automated coverage
 

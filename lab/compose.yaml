@@ -35,8 +35,10 @@ services:
       - "127.0.0.1:18081:8081"
       - "127.0.0.1:11080:1080"
       - "127.0.0.1:11080:1080/udp"
-      # The bundled Caido plugin currently targets this fixed loopback port.
+      # Default data endpoint used by the bundled Caido plugin.
       - "127.0.0.1:7777:7777"
+      # Lab-only forward to the daemon's loopback-restricted control endpoint.
+      - "127.0.0.1:9090:9091"
     healthcheck:
       test: ["CMD", "mimic", "ctl", "-socket", "tcp://127.0.0.1:9090", "info"]
       interval: 1s

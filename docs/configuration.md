@@ -25,6 +25,11 @@ The control server refuses non-loopback TCP binds. Unix sockets are created with
 mode `0600`. There is no application-level authentication in protocol v1, so do
 not forward the endpoint or place it in a shared directory.
 
+The Caido plugin's status and profile controls require loopback TCP because
+Caido's plugin connection API does not expose Mimic's host Unix socket. Use
+`tcp://127.0.0.1:9090` when Mimic and Caido run on the same host; keep the
+endpoint private to that host.
+
 ## `[logging]`
 
 | Key | Default | Values |

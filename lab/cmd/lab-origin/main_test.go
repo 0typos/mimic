@@ -3,11 +3,14 @@
 package main
 
 import (
+	"bufio"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -58,4 +61,48 @@ func TestTLSVersionName(t *testing.T) {
 			t.Fatalf("tlsVersionName(%d) = %q, want %q", version, got, want)
 		}
 	}
+}
+
+func TestForwardConnection(t *testing.T) {
+	upstream, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer upstream.Close()
+	serverDone := make(chan error, 1)
+	go func() {
+		connection, acceptErr := upstream.Accept()
+		if acceptErr != nil {
+			serverDone <- acceptErr
+			return
+		}
+		defer connection.Close()
+		line, readErr := bufio.NewReader(connection).ReadString('\n')
+		if readErr == nil {
+			_, readErr = connection.Write([]byte(strings.ToUpper(line)))
+		}
+		serverDone <- readErr
+	}()
+
+	client, downstream := net.Pipe()
+	forwardDone := make(chan struct{})
+	go func() {
+		forwardConnection(downstream, upstream.Addr().String())
+		close(forwardDone)
+	}()
+	if _, err := client.Write([]byte("hello\n")); err != nil {
+		t.Fatal(err)
+	}
+	response, err := bufio.NewReader(client).ReadString('\n')
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response != "HELLO\n" {
+		t.Fatalf("response = %q", response)
+	}
+	_ = client.Close()
+	if err := <-serverDone; err != nil {
+		t.Fatal(err)
+	}
+	<-forwardDone
 }

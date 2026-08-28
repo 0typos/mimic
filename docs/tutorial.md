@@ -1,169 +1,504 @@
-# Complete hands-on tutorial
+# Operating Mimic: a hands-on tutorial
 
-This tutorial starts with a disposable local environment and ends with the
-same operating model used for a real deployment. It covers JA4 conformance,
-HTTP identity, interception, routes, live control, bounded legacy TLS, SOCKS,
-Caido, Burp Suite, logs, and cleanup. Allow 25–40 minutes to explore it; setup
-itself is designed to finish in two to three minutes.
+This tutorial teaches how to use Mimic during normal research work. The lab is
+still deterministic, but its output is used only to confirm decisions you make
+as an operator: where Mimic belongs in a traffic path, which profile wins, when
+a change is temporary, what needs a reload, and which CA each tool must trust.
+
+Allow 35–50 minutes for the complete tutorial. If you already ran the
+[five-minute quickstart](quickstart.md), start at
+[The day-to-day operating loop](#3-the-day-to-day-operating-loop).
 
 Use Mimic only with systems and traffic you are authorized to test.
 
-## 1. Understand the lab boundary
+By the end, you will be able to:
 
-Docker Compose is a better fit than a VM here: it gives each origin a stable
-DNS name and isolates its intentionally obsolete TLS policy, while requiring a
-single command and no guest operating-system boot.
+- choose correctly between interception, Caido, Burp, tunnel, and SOCKS paths;
+- use a browser directly through Mimic;
+- edit and replay traffic through Caido or Burp while Mimic owns upstream TLS;
+- choose between a default profile, host route, and temporary override;
+- install a captured profile and make it available without restarting;
+- permit legacy TLS for one intended host without weakening every connection;
+- validate, reload, observe, and troubleshoot a running daemon.
 
-| Component | Purpose |
+## 1. Start with the traffic path
+
+Mimic is an upstream transport-identity layer. Burp and Caido remain the places
+where you inspect, edit, replay, and organize requests:
+
+```text
+Browser ───────────────> Mimic intercept ───────────────> origin
+Browser ─> Caido ──────> Mimic Caido bridge ───────────> origin
+Browser ─> Burp ───────> Mimic intercept ───────────────> origin
+Client  ───────────────> Mimic tunnel or SOCKS ─────────> origin
+```
+
+The final arrow matters. Mimic can replace the upstream TLS ClientHello only
+when it creates that TLS connection.
+
+| What you are doing | Mimic path | Changes upstream TLS? | Trust requirement |
+|---|---|---:|---|
+| Drive a regular browser directly | HTTP listener in `intercept` mode | yes | browser trusts Mimic CA |
+| Edit/replay in Caido | Caido plugin and bridge listener | yes | no Mimic CA |
+| Edit/replay in Burp | Burp upstream rule to intercept listener | yes | Burp trusts Mimic CA |
+| Carry opaque HTTPS | HTTP listener in `tunnel` mode | no | none for Mimic |
+| Carry arbitrary TCP/UDP | SOCKS5 | no | none for Mimic |
+
+Use interception, the Caido bridge, or the Burp chain when transport identity is
+part of the experiment. Use tunnel or SOCKS when you only want connectivity and
+need to preserve the original client's TLS bytes.
+
+The lab publishes these host-local endpoints:
+
+| Endpoint | Purpose |
 |---|---|
-| `mimic` | Daemon, control client, five proxy listeners, and generated CA |
-| `modern-origin:8443` | Self-signed HTTPS server accepting TLS 1.2–1.3 |
-| `legacy-origin:9443` | Self-signed HTTPS server accepting only TLS 1.0 |
-| `default-origin:8080` | Plain HTTP identity inspector with no host route |
+| `127.0.0.1:18080` | tunnel-mode HTTP proxy |
+| `127.0.0.1:18081` | interception-mode HTTP proxy |
+| `127.0.0.1:11080` | SOCKS5 TCP and UDP |
+| `127.0.0.1:7777` | Caido data bridge |
+| `127.0.0.1:9090` | lab-only forward to Mimic control |
 
-The origin aliases share one container but use distinct ports and policies.
-They return JSON describing the protocol, TLS version, cipher, user agent, and
-headers they observed.
+The control forward exists only to let a host-local Caido plugin operate the
+containerized tutorial daemon. Mimic itself still binds control to loopback and
+refuses a remotely reachable control endpoint.
 
-The lab publishes only loopback ports. Its `insecure_skip_verify = true` and
-container-wide listener CIDRs are deliberate concessions for ephemeral,
-self-signed origins. Never copy those values into a production configuration.
+## 2. Prepare a disposable workstation session
 
-## 2. Start and inspect the environment
+You need [`uv`](https://docs.astral.sh/uv/getting-started/installation/), Docker
+with Compose v2.20 or newer, and `curl`. The executable launcher follows the PEP
+723 script format and carries a lock, so there is no virtual environment or
+manual `pip install` step.
 
-Prerequisites are [`uv`](https://docs.astral.sh/uv/getting-started/installation/),
-Docker with Compose v2.20+, and `curl`. The executable launcher declares and
-locks its Python dependencies, so there is no virtual environment to create or
-activate. From a source checkout or release archive:
+From a source checkout or release archive:
 
 ```sh
 uv --version
-time ./lab/mimic-lab up
-docker compose -f lab/compose.yaml ps
+docker compose version
+docker info --format '{{.ServerVersion}}'
+curl --version
+./lab/mimic-lab up
 ```
 
-Both services should be `healthy`. The target startup time is under three
-minutes, including the first image build. Cached starts should take seconds.
-If startup fails, see [Troubleshooting](#12-troubleshooting).
+If Docker reports a socket permission error, fix access to the engine before
+continuing. Fish, Bash, and Zsh can all run the commands in this tutorial as
+written; no shell-specific activation or exported lab variables are required.
 
-View the loaded profiles and daemon state:
+The lab contains:
+
+- `default-origin:8080`, a plaintext HTTP inspector with no route;
+- `default-origin:8443`, an unrouted TLS alias useful for profile comparisons;
+- `modern-origin:8443`, accepting TLS 1.2–1.3;
+- `legacy-origin:9443`, accepting only TLS 1.0;
+- one Mimic daemon with tunnel, intercept, SOCKS, Unix, and Caido listeners.
+
+Confirm that the operating surfaces are ready:
 
 ```sh
-./lab/mimic-lab profiles
+docker compose -f lab/compose.yaml ps
 ./lab/mimic-lab status
+./lab/mimic-lab profiles
 ```
 
-The control endpoint stays inside the container on loopback. The wrapper runs
-the same `mimic ctl` binary in that container; there is no separate admin API.
-For frequent use, `./lab/mimic-lab install` creates a guarded symlink in `uv`'s
-executable directory. You can then run commands such as `mimic-lab status` from
-any directory and remove the link with `mimic-lab uninstall`.
+The lab's broad container CIDRs, self-signed origin trust, and intentionally old
+TLS server are isolated teaching concessions. Do not copy those values into a
+real deployment.
 
-## 3. Verify the emitted JA4
+## 3. The day-to-day operating loop
 
-Run a conformance probe against the modern origin:
+A normal Mimic session has five steps:
+
+1. validate configuration before starting or reloading;
+2. start the daemon and confirm its selected profile;
+3. send traffic through a path where Mimic can perform the intended work;
+4. change profile or routing scope for the current experiment;
+5. inspect status and logs when behavior differs from expectation.
+
+In a native deployment, that looks like:
+
+```sh
+mimic validate -config ./config.toml
+mimic daemon -config ./config.toml
+mimic ctl -config ./config.toml status
+```
+
+The lab is already running, so use its wrapper for status and logs:
+
+```sh
+./lab/mimic-lab status
+./lab/mimic-lab logs
+```
+
+Use `Ctrl-C` to leave the log view. It does not stop the containers.
+
+When diagnosing one request, temporarily enable debug logging:
 
 ```sh
 docker compose -f lab/compose.yaml exec -T mimic \
-  mimic probe -config /etc/mimic/config.toml \
-  -profile chrome-152-linux -target modern-origin:8443 -raw
+  mimic ctl -socket tcp://127.0.0.1:9090 log-level debug
 ```
 
-Look for:
+Return to `info` after the experiment so normal traffic does not bury useful
+events.
+
+## 4. Decide which profile should win
+
+Profile selection has an explicit precedence order:
 
 ```text
-expected JA4: t13d1517h2_8daaf6152771_cb7bf5808d99
-observed JA4: t13d1517h2_8daaf6152771_cb7bf5808d99
-result:       PASS
+per-request or bridge override
+        ↓ if empty
+first matching host route
+        ↓ if no match
+live daemon default
+        ↓ after restart
+runtime.default_profile from TOML
 ```
 
-The observed value comes from the exact ClientHello bytes Mimic wrote. `JA4_r`
-is the normalized input and `JA4_ro` preserves extension order for diagnosis.
-This verifies Mimic's pinned uTLS preset, not eternal parity with a browser of
-the same marketing version. Important profiles should also be checked against
-your controlled external sensor.
+Choose the narrowest mechanism that represents your intent.
 
-JA4 is the JA4+ member Mimic calculates directly. A profile may store an
-expected JA4H as operator metadata, but Mimic does not calculate it. JA4S and
-JA4X describe server/certificate behavior and are not properties this outbound
-client proxy can reproduce. Mimic also does not claim browser-identical HTTP/2
-SETTINGS, HPACK, or frame ordering.
+| Intent | Mechanism | Duration |
+|---|---|---|
+| Compare most unrouted traffic as Firefox | `mimic ctl use` | until restart |
+| Always use one profile for an application host | `[[routes]]` | persisted in TOML |
+| Try one Burp request as another profile | `X-Mimic-Profile` header | one request |
+| Try all currently selected Caido domains as another profile | plugin override | until changed |
+| Change the startup baseline | `runtime.default_profile` | after daemon restart |
 
-## 4. Know which proxy modes change TLS
-
-The central rule is simple:
-
-| Path | Mimic sees plaintext HTTP | Mimic creates upstream TLS | Fingerprint source |
-|---|---:|---:|---|
-| Plain HTTP through tunnel listener | yes | no TLS involved | Mimic HTTP profile |
-| HTTPS `CONNECT` through tunnel listener | no | no | original client |
-| HTTPS through intercept listener | yes | yes | Mimic |
-| SOCKS5 | no | no | original client |
-| Caido bridge | yes | yes | Mimic |
-
-Send plain HTTP through the tunnel listener:
-
-```sh
-curl --noproxy "" --proxy http://127.0.0.1:18080 \
-  http://default-origin:8080/inspect?lesson=http
-```
-
-The response contains the Chrome 152 `user_agent` because Mimic handled a
-plaintext request and applied the active profile's HTTP identity.
-
-Now use interception for HTTPS:
-
-```sh
-curl --noproxy "" --proxy http://127.0.0.1:18081 \
-  --cacert lab/.state/mimic-ca.pem \
-  https://modern-origin:8443/inspect?lesson=intercept
-```
-
-The returned `tls` value describes Mimic's connection to the origin. `curl`
-trusts the lab CA only for this invocation. Do not use `-k`: that would hide a
-broken downstream trust setup.
-
-## 5. Change profiles without restarting
-
-The lab defines `lab-firefox`, a saved profile backed by the Firefox 120
-ClientHello plus a distinctive HTTP header. Change the daemon-wide default:
+Change the live default without restarting:
 
 ```sh
 docker compose -f lab/compose.yaml exec -T mimic \
   mimic ctl -socket tcp://127.0.0.1:9090 use lab-firefox
 
 curl --noproxy "" --proxy http://127.0.0.1:18080 \
-  http://default-origin:8080/inspect?lesson=profile
+  http://default-origin:8080/inspect?workflow=live-default
 ```
 
-The result now includes `Firefox/120.0` and `X-Lab-Profile: lab-firefox`.
-Selection is live but not persisted: restart uses `runtime.default_profile`.
+`default-origin` has no route, so its response uses `lab-firefox`. Now request a
+routed host:
 
-Reset it when finished:
+```sh
+curl --noproxy "" --proxy http://127.0.0.1:18081 \
+  --cacert lab/.state/mimic-ca.pem \
+  https://modern-origin:8443/inspect?workflow=routed
+```
+
+`modern-origin` still uses Chrome because its route is more specific than the
+live default. This is a common reason a successful `mimic ctl use` appears not
+to work.
+
+Reset the session default when the comparison is over:
 
 ```sh
 docker compose -f lab/compose.yaml exec -T mimic \
   mimic ctl -socket tcp://127.0.0.1:9090 use chrome-152-linux
 ```
 
-To create your own saved profile without privileged packet capture, run a
-second local Mimic binary outside the lab:
+Live selection is intentionally not written back to TOML. A restart returns to
+`runtime.default_profile`.
+
+## 5. Workflow A: use a regular browser directly
+
+This is the shortest interactive path when you want to browse normally while
+Mimic replaces the upstream TLS and HTTP presentation.
+
+Use a dedicated browser profile so proxy and CA changes are easy to contain:
+
+1. Import only `lab/.state/mimic-ca.pem` as a trusted certificate authority in
+   that browser profile. Never import `mimic-ca-key.pem`.
+2. Set the browser's HTTP and HTTPS proxy to `127.0.0.1`, port `18081`.
+3. Do not add the lab origin names to the browser's proxy-bypass list.
+4. Open `https://modern-origin:8443/inspect?workflow=browser`.
+
+The page returns JSON from the origin. The `tls` and `cipher` fields describe
+Mimic's upstream connection, while the user agent and ordered headers are the
+HTTP identity Mimic applied.
+
+For a quick command-line equivalent:
+
+```sh
+curl --noproxy "" --proxy http://127.0.0.1:18081 \
+  --cacert lab/.state/mimic-ca.pem \
+  https://modern-origin:8443/inspect?workflow=browser-equivalent
+```
+
+Use port `18080` instead when you deliberately want an opaque CONNECT tunnel.
+That preserves the browser's own ClientHello but prevents Mimic from replacing
+it. SOCKS has the same identity limitation.
+
+There is also an important research boundary: Mimic changes the network and
+HTTP presentation it owns. It does not change JavaScript-visible browser APIs,
+rendering behavior, screen properties, storage, or user interaction. A profile
+that conflicts with the real browser can therefore create a detectable
+cross-layer mismatch. That mismatch can itself be useful in controlled tests,
+but it is not full browser emulation.
+
+At the end of a browser session, disable the proxy. Remove the lab CA from the
+browser profile if you will not reuse the lab.
+
+## 6. Workflow B: use the Caido plugin
+
+This is the cleanest path for regular Replay, Intercept, Automate, and proxied
+browser work because Caido gives Mimic the plaintext request through its
+upstream hook. Mimic creates TLS only toward the destination.
+
+### Install the plugin
+
+Use the Caido asset from a release, or build it from source:
+
+```sh
+corepack enable
+make caido
+```
+
+Install `integrations/caido/dist/plugin_package.zip` from Caido's plugin
+installation page. The package contains both backend and frontend components.
+Ensure both are enabled.
+
+Open **Mimic** from Caido's sidebar. With the lab running, the initial settings
+are already correct:
+
+- bridge: `127.0.0.1:7777`;
+- control: `127.0.0.1:9090`;
+- bridge enabled;
+- profile override empty.
+
+The page should show **Connected**, the daemon's active profile, counters,
+uptime, loaded profile count, and configuration path. **Check status** performs
+an immediate control request.
+
+### Opt in only intended domains
+
+Caido requires an upstream plugin to be enabled per domain. In Caido's
+**Upstream Plugins** settings, enable **Mimic Upstream** for these lab names:
+
+- `default-origin`;
+- `modern-origin`;
+- `legacy-origin` only when testing the legacy workflow.
+
+Start narrow in real projects as well. A domain not opted in continues through
+Caido's normal upstream transport.
+
+### Use the default, a route, or an override
+
+Create a request in Replay:
+
+```http
+GET https://default-origin:8443/inspect?workflow=caido HTTP/1.1
+User-Agent: Caido-Mimic-Tutorial/1.0
+Accept: */*
+```
+
+`default-origin` has no Mimic route. Change **Daemon profile** on the Mimic page
+and resend to test different live defaults. The active profile and counters
+update without restarting either tool.
+
+Next send the request to `modern-origin:8443`. Its configured route pins
+Chrome, so changing the daemon default no longer wins. To run a temporary A/B
+comparison, set **Bridge profile override** to `lab-firefox`, save, and resend.
+The saved setting is attached to every request that the plugin currently
+handles; clear it after the comparison to restore host routes.
+
+When upstream negotiates HTTP/1.1, the Caido bridge retains Caido's raw request
+bytes, so selecting a profile controls TLS without overwriting the message you
+are editing. When upstream negotiates HTTP/2, Mimic must parse and translate
+one request; during that translation it applies the profile's user agent and
+configured headers. Keep this difference in mind when an experiment depends on
+the exact HTTP message as well as the TLS fingerprint.
+
+### Know which CA is involved
+
+- A browser proxied through Caido trusts Caido's CA.
+- Caido does not need to trust the Mimic CA for the native bridge.
+- Mimic still verifies the real origin certificate according to its config.
+
+The browser never connects to Mimic's interception listener in this path, so
+trusting the Mimic CA would add risk without providing a benefit.
+
+Use the page's **Enabled** switch as a global plugin-side bypass. When disabled,
+selected domains return to Caido's normal upstream handling. Settings persist
+in Caido's backend database and are available before the page is opened.
+
+Official Caido references: [installing plugins](https://docs.caido.io/app/guides/plugins_installing)
+and [upstream plugins](https://docs.caido.io/app/guides/upstream).
+
+## 7. Workflow C: put Mimic behind Burp Suite
+
+Burp remains responsible for its browser, Proxy, Repeater, Intruder, and
+message editing. Mimic handles the connection Burp creates toward the origin.
+
+There are two distinct CA relationships:
+
+```text
+browser ── trusts Burp CA ──> Burp ── trusts Mimic CA ──> Mimic ──> origin
+```
+
+Configure the lab path:
+
+1. Keep Burp's normal proxy listener. Use Burp's browser or make an external
+   browser trust Burp's CA.
+2. In **Settings > Network > TLS > Custom CA certificates**, add the public
+   `lab/.state/mimic-ca.pem`. Do not add its private key.
+3. In **Settings > Network > Connections > Upstream proxy servers**, create a
+   project rule for destination host `modern-origin`, proxy host `127.0.0.1`,
+   and proxy port `18081`.
+4. Send `https://modern-origin:8443/inspect?workflow=burp` from Repeater or the
+   proxied browser.
+5. Confirm Mimic's connection/request counters increase.
+
+For one Repeater request, add this header:
+
+```http
+X-Mimic-Profile: lab-firefox
+```
+
+Mimic uses it as a one-request override and removes it before forwarding. This
+is narrower than changing the daemon default and is usually the best Burp
+workflow for A/B comparisons.
+
+Do not point Burp at port `18080` when the goal is fingerprint replacement.
+Burp's TLS remains opaque inside that CONNECT tunnel. Also avoid a wildcard
+upstream rule until a narrow project rule works; accidental broad interception
+creates confusing certificate and compatibility failures.
+
+Official Burp references:
+[upstream proxy rules](https://portswigger.net/burp/documentation/desktop/settings/network/connections),
+[custom CA trust](https://portswigger.net/burp/documentation/desktop/settings/network/tls), and
+[browser CA setup](https://portswigger.net/burp/documentation/desktop/external-browser-config/certificate).
+
+## 8. Model a real project with routes
+
+Routes are durable policy. Use them when a hostname should consistently receive
+one transport profile, not merely for a short comparison.
+
+A realistic configuration might say:
+
+```toml
+[runtime]
+default_profile = "chrome-152-linux"
+
+[[routes]]
+host = "login.test.example"
+profile = "firefox-154-linux"
+legacy_retry = false
+insecure_skip_verify = false
+
+[[routes]]
+host = "*.old-appliance.test"
+profile = "chrome-133"
+legacy_retry = true
+insecure_skip_verify = false
+```
+
+Routes are case-insensitive hostname globs without ports. They are evaluated in
+file order and the first match wins. Keep exact hosts above broad wildcards.
+
+The safe edit cycle is:
+
+```sh
+mimic validate -config ./config.toml
+mimic ctl -config ./config.toml reload
+mimic ctl -config ./config.toml status
+```
+
+The running daemon swaps mutable configuration only after the new file
+validates. Existing connections keep the snapshot they started with; new
+connections see the new routes.
+
+A reload retains the live selected profile when that profile still exists. If
+you edit `runtime.default_profile` because you want a new startup baseline,
+restart the daemon after validation rather than expecting reload to override an
+intentional live selection.
+
+## 9. Handle one legacy TLS host safely
+
+Legacy compatibility and browser identity are separate choices. Mimic always
+tries the selected profile first. It retries with the legacy policy only when:
+
+1. legacy support and retry are enabled;
+2. the hostname is allowlisted;
+3. the matching route permits retry;
+4. the failure is an eligible protocol or cipher error.
+
+The lab has that policy only for `legacy-origin`. Exercise it through the same
+interception path a browser or Burp would use:
+
+```sh
+curl --noproxy "" --proxy http://127.0.0.1:18081 \
+  --cacert lab/.state/mimic-ca.pem \
+  https://legacy-origin:9443/inspect?workflow=legacy
+
+./lab/mimic-lab status
+```
+
+The response reports TLS 1.0 and `tls_fallbacks` increases. The debug log shows
+the failed profile attempt followed by the bounded fallback.
+
+In a real config, keep the exception narrow:
+
+```toml
+[legacy]
+enabled = true
+min_version = "tls1.0"
+retry = true
+retry_on = ["protocol version", "handshake failure", "insufficient security"]
+allow_hosts = ["management.old-appliance.test"]
+insecure_skip_verify = false
+
+[[routes]]
+host = "management.old-appliance.test"
+profile = "chrome-133"
+legacy_retry = true
+insecure_skip_verify = false
+```
+
+Do not add a broad wildcard merely to make an error disappear. Certificate
+verification failure does not authorize downgrade, and disabling verification
+is not a substitute for installing the correct private root. Mimic supports TLS
+1.0–1.3; it does not support SSLv2 or SSLv3.
+
+## 10. Capture and install a profile you actually need
+
+The built-in catalog is intentionally small. Add a profile when a project needs
+a client/version/platform that is not represented, and capture that real client
+rather than relabeling an unrelated preset.
+
+If you are working from source, build the local binary first:
+
+```sh
+make build
+```
+
+Temporarily disable the browser proxy so this one connection reaches the
+capture listener directly. Then start a one-shot listener:
 
 ```sh
 ./mimic profile capture \
   -listen tcp://127.0.0.1:8443 \
   -name tutorial-browser \
-  -output ./tutorial-browser.toml \
+  -output ./lab/.state/tutorial-browser.toml \
   -browser "Tutorial Browser" \
   -browser-version "1.0" \
-  -platform "your OS"
+  -platform "your operating system" \
+  -lifecycle custom \
+  -source "clean browser profile on controlled workstation"
 ```
 
-Open `https://localhost:8443/` in a clean browser profile. A page-load failure
-is expected: the capture listener stops immediately after ClientHello. Review
-the generated TOML and `.clienthello.hex` sidecar, copy both into the lab
-configuration directory, then add the generated `[profiles.NAME]` table to
-`lab/mimic.toml`. Validate and reload:
+Open `https://localhost:8443/` in a clean browser profile. The load failure is
+expected: Mimic captures one ClientHello and intentionally does not complete
+TLS.
+
+The command creates a TOML snippet and a `.clienthello.hex` sidecar. Before
+merging the snippet into `lab/mimic.toml`:
+
+- review the recorded browser, version, platform, source, and calculated JA4;
+- set an accurate user agent and headers if HTTP identity matters;
+- change `client_hello_file` to
+  `.state/tutorial-browser.clienthello.hex`, because the lab mounts
+  `lab/.state/` at `/etc/mimic/.state/`.
+
+Append the reviewed `[profiles.tutorial-browser]` table to `lab/mimic.toml`,
+then validate and reload inside the container:
 
 ```sh
 docker compose -f lab/compose.yaml exec -T mimic \
@@ -173,208 +508,115 @@ docker compose -f lab/compose.yaml exec -T mimic \
   mimic ctl -socket tcp://127.0.0.1:9090 reload
 ```
 
-Profiles, routes, runtime timeouts, legacy policy, and log level reload live.
-Listener, control, logging-format, and CA changes require a restart. See the
-[profile workflow](profiles.md) covers raw/hex and PCAP imports, metadata, SNI,
-verification, and replay limitations.
-
-## 6. Apply host routes and per-request overrides
-
-`modern-origin` and `legacy-origin` have explicit Chrome routes in
-`lab/mimic.toml`. Set the default to Firefox again, then request the routed host:
-
-```sh
-docker compose -f lab/compose.yaml exec -T mimic \
-  mimic ctl -socket tcp://127.0.0.1:9090 use lab-firefox
-
-curl --noproxy "" --proxy http://127.0.0.1:18081 \
-  --cacert lab/.state/mimic-ca.pem \
-  https://modern-origin:8443/inspect?lesson=route
-```
-
-The origin sees Chrome because first-match host routing overrides the live
-default. For one intercepted HTTP request, `X-Mimic-Profile: lab-firefox`
-selects a profile and is removed before forwarding:
-
-```sh
-curl --noproxy "" --proxy http://127.0.0.1:18081 \
-  --cacert lab/.state/mimic-ca.pem \
-  -H 'X-Mimic-Profile: lab-firefox' \
-  https://modern-origin:8443/inspect?lesson=override
-```
-
-Reset the default to Chrome before continuing:
-
-```sh
-docker compose -f lab/compose.yaml exec -T mimic \
-  mimic ctl -socket tcp://127.0.0.1:9090 use chrome-152-linux
-```
-
-## 7. Exercise bounded legacy TLS
-
-Mimic first presents the selected modern profile. It retries lower only when
-the host allowlist, route policy, enabled switch, and eligible error list all
-permit it. Probe the TLS-1.0-only origin:
+Refresh the Caido Mimic page or run `./lab/mimic-lab profiles`; the new profile
+should now be selectable. Finally, probe it against a controlled sensor:
 
 ```sh
 docker compose -f lab/compose.yaml exec -T mimic \
   mimic probe -config /etc/mimic/config.toml \
-  -target legacy-origin:9443 -format json
+  -profile tutorial-browser -target modern-origin:8443 -raw
 ```
 
-The JSON contains two attempts: the first modern handshake fails, and the
-second has `"legacy": true` with `"negotiated_version": "TLS1.0"`. Confirm the
-same policy through interception:
+A matching JA4 proves the emitted properties represented by JA4. It does not
+prove byte-for-byte browser behavior, session resumption, HTTP/2 frames, HTTP/3,
+JA4H, JavaScript state, or the rest of the JA4+ family. See
+[Profiles](profiles.md) for PCAP import and detailed capture limitations.
+
+## 11. Know when to use live control, reload, or restart
+
+| Change | Action | Persists restart? |
+|---|---|---:|
+| selected default profile | `mimic ctl use` or Caido UI | no |
+| log level | `mimic ctl log-level` | no unless TOML also changes |
+| profiles and routes | validate, then `mimic ctl reload` | yes |
+| runtime timeouts and legacy policy | validate, then reload | yes |
+| listener or control addresses | validate, then restart | yes |
+| MITM CA paths or logging format | validate, then restart | yes |
+| Caido bridge endpoint/override | save on Mimic Caido page | stored by Caido |
+
+Treat TOML as durable policy and live control as session state. This distinction
+keeps experimental choices from silently becoming production defaults.
+
+For a native daemon managed by systemd, a routine configuration change is:
 
 ```sh
-curl --noproxy "" --proxy http://127.0.0.1:18081 \
-  --cacert lab/.state/mimic-ca.pem \
-  https://legacy-origin:9443/inspect?lesson=legacy
+mimic validate -config /etc/mimic/config.toml
+mimic ctl -config /etc/mimic/config.toml reload
+journalctl -u mimic --since "2 minutes ago"
+```
 
+If the control client reports that the change needs a restart, schedule one;
+Mimic does not partially rebind listeners or replace a CA during reload.
+
+## 12. Diagnose behavior from symptoms
+
+Start with counters and the traffic path before staring at the response body:
+
+```sh
 ./lab/mimic-lab status
-```
-
-The daemon's `tls_fallbacks` counter increases. A certificate validation error
-does not by itself authorize a downgrade. Mimic supports TLS 1.0–1.3; it does
-not support SSLv2 or SSLv3.
-
-## 8. Use Unix sockets and compare SOCKS behavior
-
-First exercise the Unix-socket HTTP listener. The socket has mode `0600`, so
-the lab invokes its small request helper inside the Mimic container:
-
-```sh
-docker compose -f lab/compose.yaml exec -T mimic \
-  /usr/local/bin/lab-origin unix-check \
-  /etc/mimic/.state/http.sock default-origin:8080
-```
-
-This is the same forward-proxy protocol as a TCP HTTP listener, carried over a
-filesystem-scoped connection. In a native deployment, put the socket in a
-directory accessible only to the intended service account.
-
-SOCKS is useful for connectivity, including UDP ASSOCIATE, but it relays the
-client's TLS bytes. It does not impersonate a browser:
-
-```sh
-curl --noproxy "" --socks5-hostname 127.0.0.1:11080 --insecure \
-  https://modern-origin:8443/inspect?lesson=socks
-```
-
-The origin sees curl's user agent. `--insecure` is needed here because curl is
-talking directly to the self-signed lab origin through an opaque SOCKS tunnel;
-Mimic's interception CA is not involved.
-
-## 9. Use the Caido bridge
-
-First prove the wire path without installing Caido:
-
-```sh
-docker compose -f lab/compose.yaml exec -T origin \
-  /lab-origin caido-check mimic:7777 modern-origin:8443 lab-firefox
-```
-
-The helper sends the versioned `MIMIC/1` preface followed by a plaintext HTTP
-request. Mimic selects `lab-firefox` for TLS, originates the connection, and
-returns the response. On HTTP/1.1, the bridge deliberately retains Caido's raw
-request headers rather than replacing them with the profile's HTTP identity.
-
-For the real UI workflow:
-
-1. Use the release asset `mimic-caido-VERSION.zip`, or build it from source with
-   `corepack enable && make caido` and use
-   `integrations/caido/dist/plugin_package.zip`.
-2. In Caido, open **Plugins**, choose **Install Package**, and select the ZIP.
-3. In **Plugins > Installed**, ensure the backend component is enabled.
-4. In Caido's **Upstream Plugins** settings, enable **Mimic Upstream** only for
-   `modern-origin` and `legacy-origin` while using the lab.
-5. With the lab running, send `https://modern-origin:8443/inspect` through
-   Caido's Replay or proxied browser and inspect the response JSON.
-
-Caido retains Proxy, Intercept, Replay, Automate, and history. Its `onUpstream`
-hook gives Mimic a plaintext request path, so no second Mimic CA is required.
-The current backend-only plugin targets fixed `127.0.0.1:7777` and does not yet
-offer profile selection or daemon status in Caido's UI.
-
-Official Caido references: [installing plugins](https://docs.caido.io/app/guides/plugins_installing)
-and [enabling plugin components](https://docs.caido.io/app/guides/plugins_managing).
-
-## 10. Put Mimic behind Burp Suite
-
-Burp terminates the browser TLS connection, then Mimic terminates Burp's
-upstream TLS connection. Each side must trust the CA presented directly to it:
-
-1. Keep Burp's normal proxy listener and make the browser trust Burp's CA (or
-   use Burp's preconfigured browser).
-2. In **Settings > Network > TLS > Custom CA certificates**, add the public
-   `lab/.state/mimic-ca.pem`. Never add the matching private key.
-3. In **Settings > Network > Connections > Upstream proxy servers**, add a
-   project rule for destination host `modern-origin`, proxy host `127.0.0.1`,
-   and proxy port `18081`. Add `legacy-origin` separately if desired.
-4. Send `https://modern-origin:8443/inspect` from Burp's browser or Repeater.
-5. Confirm the response shows the routed Chrome user agent and modern TLS, then
-   inspect `./lab/mimic-lab logs` for the selected profile.
-
-Do not point Burp at port `18080` when the goal is fingerprint replacement:
-that tunnel listener sees only Burp's opaque CONNECT payload. Start with narrow
-destination rules before considering a wildcard.
-
-Official Burp references: [upstream proxy rules](https://portswigger.net/burp/documentation/desktop/settings/network/connections),
-[custom CA trust](https://portswigger.net/burp/documentation/desktop/settings/network/tls),
-and [Burp browser/CA setup](https://portswigger.net/burp/documentation/desktop/external-browser-config/certificate).
-
-## 11. Operate and diagnose the daemon
-
-Follow logs and change verbosity live:
-
-```sh
 ./lab/mimic-lab logs
-
-docker compose -f lab/compose.yaml exec -T mimic \
-  mimic ctl -socket tcp://127.0.0.1:9090 log-level debug
 ```
 
-Use `Ctrl-C` to leave the log view; the containers keep running. Status reports
-connections, handled requests, legacy fallbacks, uptime, and current profile.
-The one-command regression tour is useful after configuration changes:
+| Symptom | First thing to check |
+|---|---|
+| Connections do not increase | wrong port, proxy bypass, or Caido domain not opted in |
+| Connections increase but requests do not | TLS/HTTP parse failure; enable debug logs briefly |
+| Profile changed but target still uses another | a host route or explicit override has precedence |
+| Browser fingerprint is unchanged | tunnel/SOCKS path; use interception or native Caido bridge |
+| Caido retains the edited headers | expected when upstream negotiates HTTP/1.1 |
+| Certificate error in direct-browser mode | browser must trust public Mimic CA |
+| Certificate error in Burp chain | Burp—not the browser—must trust public Mimic CA |
+| Caido page says unavailable | Mimic is stopped or control host/port is wrong |
+| JA4 differs only with an IP target | IP literals omit hostname SNI and can change JA4 |
+| Legacy endpoint still fails | allowlist, route permission, eligible error, and real CA trust |
+
+Use the conformance probe when the question is specifically what Mimic put on
+the wire:
+
+```sh
+docker compose -f lab/compose.yaml exec -T mimic \
+  mimic probe -config /etc/mimic/config.toml \
+  -profile chrome-152-linux -target modern-origin:8443 -raw
+```
+
+`expected JA4` and `observed JA4` should match. `JA4_r` shows normalized input;
+`JA4_ro` retains original extension order for diagnosis. This is a targeted
+check, not the main daily interface.
+
+After configuration changes, the automated regression tour remains useful:
 
 ```sh
 ./lab/mimic-lab check
 ```
 
-## 12. Troubleshooting
+It exercises every lab transport and policy path, but it is a verification
+command rather than a substitute for the operating workflows above.
 
-- **Docker permission denied:** start Docker Desktop/Engine and ensure your user
-  can access its socket, then retry `docker info`.
-- **Port already allocated:** stop the conflicting local service or change the
-  host side of the mapping in `lab/compose.yaml`. Port `7777` is fixed because
-  the current Caido plugin expects it.
-- **Service is unhealthy:** run `docker compose -f lab/compose.yaml ps` and
-  `docker compose -f lab/compose.yaml logs --no-color`.
-- **Certificate error on port 18081:** use the generated public CA at
-  `lab/.state/mimic-ca.pem`; do not use the origin's self-signed certificate.
-- **Hostname does not resolve locally:** keep proxy-side DNS enabled. Curl needs
-  `--noproxy ""`; SOCKS needs `--socks5-hostname`, not `--socks5`.
-- **JA4 mismatch:** use `mimic probe -raw`, verify the profile and DNS hostname,
-  and compare both values. An IP target changes the SNI-related JA4 field.
-- **Reload rejected:** listener, control, and MITM endpoint changes require
-  `./lab/mimic-lab down && ./lab/mimic-lab up`.
+## 13. Finish the lab and carry the model forward
 
-## 13. Clean up and move toward deployment
-
-Stop and remove the lab containers and network:
+Stop the disposable environment:
 
 ```sh
 ./lab/mimic-lab down
 ```
 
-Compose deliberately preserves `lab/.state/` for fast restarts. The only trust
-you granted with the documented curl commands was process-local, so there is no
-host trust-store entry to undo. To discard the lab CA and its private key,
-delete `lab/.state/` after the containers are down.
+Compose preserves `lab/.state/` for fast restarts. The documented curl commands
+trusted the CA only for their individual processes. A browser, Burp, or Caido
+trust change must be removed from that tool when you are finished. Delete
+`lab/.state/` only after the lab is down if you want to discard its CA, private
+key, and captured tutorial profiles.
 
-For deployment, return to loopback listeners and narrow CIDRs, restore
-certificate verification, set a host allowlist for any legacy retry, protect
-the Unix or loopback control endpoint, and store the interception key with mode
-`0600`. Continue with the [deployment guide](deployment.md),
-[configuration reference](configuration.md), and [threat model](threat-model.md).
+For a real project, keep this checklist:
+
+1. decide whether Mimic must originate upstream TLS;
+2. use a dedicated browser/tool trust boundary;
+3. start with loopback listeners and narrow destination scope;
+4. leave routes active and overrides empty unless running an explicit test;
+5. validate before reload and verify status after it;
+6. enable legacy retry only for named hosts;
+7. use `probe` and debug logs when transport evidence is actually needed.
+
+Continue with the [configuration reference](configuration.md),
+[deployment guide](deployment.md), [threat model](threat-model.md), and
+[control/bridge protocols](protocols.md) when moving from the lab to a managed
+daemon.

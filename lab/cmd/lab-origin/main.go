@@ -56,6 +56,8 @@ func main() {
 		err = caidoCheck(os.Args[2:])
 	case "unix-check":
 		err = unixCheck(os.Args[2:])
+	case "tcp-forward":
+		err = tcpForward(os.Args[2:])
 	default:
 		usage()
 	}
@@ -65,7 +67,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: lab-origin serve|healthcheck|caido-check BRIDGE TARGET [PROFILE]|unix-check SOCKET TARGET")
+	fmt.Fprintln(os.Stderr, "usage: lab-origin serve|healthcheck|caido-check BRIDGE TARGET [PROFILE]|unix-check SOCKET TARGET|tcp-forward LISTEN TARGET")
 	os.Exit(2)
 }
 
@@ -212,6 +214,45 @@ func unixCheck(arguments []string) error {
 		return fmt.Errorf("write Unix proxy request: %w", err)
 	}
 	return printResponse(connection, "Unix proxy")
+}
+
+func tcpForward(arguments []string) error {
+	if len(arguments) != 2 {
+		return errors.New("tcp-forward requires LISTEN TARGET")
+	}
+	listener, err := net.Listen("tcp", arguments[0])
+	if err != nil {
+		return fmt.Errorf("listen for TCP forwarding: %w", err)
+	}
+	defer listener.Close()
+	log.Printf("lab-only TCP forwarder listening on %s for %s", arguments[0], arguments[1])
+	for {
+		downstream, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			return fmt.Errorf("accept TCP forwarding connection: %w", acceptErr)
+		}
+		go forwardConnection(downstream, arguments[1])
+	}
+}
+
+func forwardConnection(downstream net.Conn, target string) {
+	defer downstream.Close()
+	upstream, err := net.DialTimeout("tcp", target, 5*time.Second)
+	if err != nil {
+		log.Printf("lab-only TCP forwarder could not reach %s: %v", target, err)
+		return
+	}
+	defer upstream.Close()
+	done := make(chan struct{}, 1)
+	go func() {
+		_, _ = io.Copy(upstream, downstream)
+		if connection, ok := upstream.(*net.TCPConn); ok {
+			_ = connection.CloseWrite()
+		}
+		done <- struct{}{}
+	}()
+	_, _ = io.Copy(downstream, upstream)
+	<-done
 }
 
 func printResponse(connection net.Conn, label string) error {

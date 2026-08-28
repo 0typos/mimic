@@ -27,7 +27,8 @@ Implemented today:
 - per-host routing and live default-profile changes;
 - HTTP forward proxy listeners on TCP and Unix sockets;
 - opaque CONNECT tunneling and optional CA-backed HTTPS interception;
-- a native Caido upstream bridge without a second TLS interception layer;
+- a native Caido upstream bridge and control page without a second TLS
+  interception layer;
 - SOCKS5 CONNECT and UDP ASSOCIATE;
 - HTTP/1.1 header ordering and HTTP/2 upstream translation;
 - host-allowlisted TLS 1.0/1.1 compatibility retries;
@@ -149,7 +150,9 @@ Mimic supports TLS 1.0 through TLS 1.3. It does not support SSLv2 or SSLv3.
   names and old entries are labeled legacy rather than silently changed.
 - Listener, control endpoint, and CA changes require a daemon restart. Profiles,
   routes, legacy policy, and log level can reload live.
-- The Caido plugin is currently backend-only and targets `127.0.0.1:7777`.
+- The Caido plugin accepts loopback TCP bridge/control endpoints. Its optional
+  profile override applies to every domain currently opted into the plugin;
+  per-domain plugin settings are not yet implemented.
 
 ## Contributing and license
 

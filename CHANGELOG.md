@@ -14,16 +14,17 @@ Semantic Versioning once public tags begin.
   upstream bridge.
 - uTLS browser/device ClientHello presets and bounded TLS 1.0/1.1 retry.
 - Local control protocol v1, structured logging, reload, counters, and shutdown.
-- Caido backend plugin package.
+- Caido backend/frontend plugin with persistent loopback settings, daemon
+  health and counters, live profile control, and an operator page.
 - Outbound ClientHello capture, JA4 calculation, built-in conformance fixtures,
   and a text/JSON `mimic probe` command.
 - Expanded protocol, CLI, configuration, certificate, and failure-path tests,
   with an 80% enforced coverage floor and 90% maintained target.
 - Unit, race, protocol integration, vulnerability, and release build gates.
 - Operator, integration, protocol, security, testing, and release documentation.
-- A sub-five-minute quickstart and comprehensive hands-on tutorial backed by a
-  deterministic Docker Compose lab for modern TLS, TLS 1.0 fallback, all proxy
-  paths, live control, Burp, and Caido.
+- A sub-five-minute quickstart and operator-focused hands-on tutorial backed by
+  a deterministic Docker Compose lab for daily browser, Caido, Burp, routing,
+  profile capture, modern TLS, bounded TLS 1.0 fallback, and live control.
 - A locked PEP 723 `uv` launcher for running or installing the tutorial lab
   without manually managing a Python environment.
 - A 10-profile lifecycle-labeled catalog with real Chrome 152, Chromium 151,

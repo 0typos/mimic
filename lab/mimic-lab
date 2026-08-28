@@ -18,6 +18,7 @@ import json
 import os
 import shlex
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -122,6 +123,37 @@ def control(*arguments: str, quiet: bool = False) -> str:
         run(command, quiet=True)
         return ""
     return captured(command)
+
+
+def host_control(method: str, params: dict[str, object] | None = None) -> object:
+    """Call the lab-only host control forward used by the Caido plugin UI."""
+    request_id = time.time_ns()
+    request = json.dumps(
+        {"id": request_id, "method": method, "params": params or {}},
+        separators=(",", ":"),
+    ).encode()
+    try:
+        with socket.create_connection(("127.0.0.1", 9090), timeout=5) as connection:
+            connection.sendall(request + b"\n")
+            with connection.makefile("rb") as response_file:
+                response_line = response_file.readline(1024 * 1024 + 1)
+    except OSError as error:
+        fail(f"host control forward is unavailable: {error}")
+    if not response_line or len(response_line) > 1024 * 1024:
+        fail("host control forward returned an invalid response")
+    try:
+        response = json.loads(response_line)
+    except json.JSONDecodeError as error:
+        fail(f"host control forward returned invalid JSON: {error}")
+    if not isinstance(response, dict):
+        fail("host control forward returned a non-object response")
+    if response.get("id") != request_id:
+        fail("host control forward returned a mismatched response")
+    if response.get("error"):
+        fail(f"host control forward returned an error: {response['error']}")
+    if "result" not in response:
+        fail("host control forward returned no result")
+    return response["result"]
 
 
 def probe(*arguments: str, stream: bool = False) -> str:
@@ -254,6 +286,7 @@ def up() -> None:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
     compose("up", "--build", "--detach", "--wait", "--wait-timeout", "180")
+    host_control("ping")
     elapsed = round(time.monotonic() - started)
     note(f"ready in {elapsed}s; run: {launcher_command()} demo")
 
@@ -302,6 +335,11 @@ def check_lab() -> None:
     require_command("docker")
     require_command("curl")
     note("running the complete workflow")
+
+    host_status = host_control("status")
+    if not isinstance(host_status, dict) or not host_status.get("profile"):
+        fail(f"Caido UI control path returned invalid status: {host_status!r}")
+    print("PASS: Caido UI reaches the daemon control endpoint", flush=True)
 
     output = probe(
         "-profile",

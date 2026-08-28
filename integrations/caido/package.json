@@ -1,6 +1,6 @@
 {
   "name": "mimic-caido",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.24.0",
@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "@caido-community/dev": "0.1.7",
+    "@vitejs/plugin-vue": "6.0.8",
     "typescript": "5.7.3"
   }
 }

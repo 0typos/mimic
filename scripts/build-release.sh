@@ -23,6 +23,13 @@ if [[ -d "$plugin_dir" ]]; then
     echo "Caido manifest version $plugin_version does not match release version $version" >&2
     exit 1
   fi
+  for package_file in "$repo_root/integrations/caido/package.json" "$repo_root"/integrations/caido/packages/*/package.json; do
+    package_version="$(sed -n 's/^[[:space:]]*"version": "\([^"]*\)",*$/\1/p' "$package_file" | head -1)"
+    if [[ "$package_version" != "$version" ]]; then
+      echo "Caido package $package_file version $package_version does not match release version $version" >&2
+      exit 1
+    fi
+  done
 fi
 
 find "$output_dir" -maxdepth 1 -type f -name 'mimic-*' -delete
