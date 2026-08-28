@@ -12,8 +12,8 @@ import (
 
 	utls "github.com/refraction-networking/utls"
 
-	"github.com/msmythe/mimic/internal/config"
-	"github.com/msmythe/mimic/internal/fingerprint"
+	"github.com/0typos/mimic/internal/config"
+	"github.com/0typos/mimic/internal/fingerprint"
 )
 
 type Profile struct {

@@ -17,13 +17,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/msmythe/mimic/internal/config"
-	"github.com/msmythe/mimic/internal/control"
-	"github.com/msmythe/mimic/internal/engine"
-	"github.com/msmythe/mimic/internal/mitm"
-	"github.com/msmythe/mimic/internal/profilecapture"
-	"github.com/msmythe/mimic/internal/profiles"
-	"github.com/msmythe/mimic/internal/proxy"
+	"github.com/0typos/mimic/internal/config"
+	"github.com/0typos/mimic/internal/control"
+	"github.com/0typos/mimic/internal/engine"
+	"github.com/0typos/mimic/internal/mitm"
+	"github.com/0typos/mimic/internal/profilecapture"
+	"github.com/0typos/mimic/internal/profiles"
+	"github.com/0typos/mimic/internal/proxy"
 )
 
 var version = "dev"

@@ -7,7 +7,7 @@ export default defineConfig({
   version: "0.1.0",
   author: {
     name: "Mimic contributors",
-    url: "https://github.com/msmythe/mimic",
+    url: "https://github.com/0typos/mimic",
   },
   plugins: [
     {

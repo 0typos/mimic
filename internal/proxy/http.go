@@ -18,8 +18,8 @@ import (
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/net/http2"
 
-	"github.com/msmythe/mimic/internal/config"
-	"github.com/msmythe/mimic/internal/profiles"
+	"github.com/0typos/mimic/internal/config"
+	"github.com/0typos/mimic/internal/profiles"
 )
 
 func (s *Server) handleHTTP(ctx context.Context, conn net.Conn, definition config.Listener) error {

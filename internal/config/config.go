@@ -15,7 +15,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"golang.org/x/net/http/httpguts"
 
-	"github.com/msmythe/mimic/internal/fingerprint"
+	"github.com/0typos/mimic/internal/fingerprint"
 )
 
 type Config struct {

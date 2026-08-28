@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/msmythe/mimic/internal/config"
-	"github.com/msmythe/mimic/internal/profiles"
+	"github.com/0typos/mimic/internal/config"
+	"github.com/0typos/mimic/internal/profiles"
 )
 
 func testState(t *testing.T, mutate func(*config.Config)) *State {

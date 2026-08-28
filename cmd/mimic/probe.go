@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/msmythe/mimic/internal/config"
-	"github.com/msmythe/mimic/internal/engine"
-	"github.com/msmythe/mimic/internal/fingerprint"
-	"github.com/msmythe/mimic/internal/profiles"
+	"github.com/0typos/mimic/internal/config"
+	"github.com/0typos/mimic/internal/engine"
+	"github.com/0typos/mimic/internal/fingerprint"
+	"github.com/0typos/mimic/internal/profiles"
 )
 
 var errProbeMismatch = errors.New("observed JA4 does not match the expected fingerprint")

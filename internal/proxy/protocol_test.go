@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/msmythe/mimic/internal/config"
+	"github.com/0typos/mimic/internal/config"
 )
 
 func TestReadSOCKSAddressVariants(t *testing.T) {

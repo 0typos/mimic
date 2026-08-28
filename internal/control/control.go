@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/msmythe/mimic/internal/config"
-	"github.com/msmythe/mimic/internal/engine"
+	"github.com/0typos/mimic/internal/config"
+	"github.com/0typos/mimic/internal/engine"
 )
 
 const ProtocolVersion = 1

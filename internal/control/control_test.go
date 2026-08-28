@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/msmythe/mimic/internal/config"
-	"github.com/msmythe/mimic/internal/engine"
-	"github.com/msmythe/mimic/internal/profiles"
+	"github.com/0typos/mimic/internal/config"
+	"github.com/0typos/mimic/internal/engine"
+	"github.com/0typos/mimic/internal/profiles"
 )
 
 func newControlState(t *testing.T) *engine.State {

@@ -50,7 +50,7 @@ a locked, self-contained `uv` script plus Docker Compose, starts in two to three
 minutes on a typical development machine, and never installs its CA into the
 host trust store.
 
-For a native build, Mimic requires Go 1.25 or newer. Release archives contain a
+For a native build, Mimic requires Go 1.25.13 or newer. Release archives contain a
 standalone binary that needs no Go or Node runtime for normal operation:
 
 ```sh

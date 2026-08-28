@@ -5,12 +5,12 @@ documentation, and defensive research use cases.
 
 ## Development setup
 
-- Go 1.25 or newer;
-- Node.js 20 or newer plus Corepack for Caido plugin work;
+- Go 1.25.13 or newer;
+- Node.js 22.13 or newer plus Corepack for Caido plugin work;
 - a C toolchain for race-enabled Go tests.
 
 ```sh
-git clone https://github.com/msmythe/mimic.git
+git clone https://github.com/0typos/mimic.git
 cd mimic
 make check
 make caido

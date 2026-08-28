@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/msmythe/mimic/internal/config"
-	"github.com/msmythe/mimic/internal/engine"
-	"github.com/msmythe/mimic/internal/mitm"
+	"github.com/0typos/mimic/internal/config"
+	"github.com/0typos/mimic/internal/engine"
+	"github.com/0typos/mimic/internal/mitm"
 )
 
 type Server struct {

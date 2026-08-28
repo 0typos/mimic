@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/msmythe/mimic/internal/config"
+	"github.com/0typos/mimic/internal/config"
 )
 
 type udpRelay struct {

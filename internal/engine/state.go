@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/msmythe/mimic/internal/config"
-	"github.com/msmythe/mimic/internal/profiles"
+	"github.com/0typos/mimic/internal/config"
+	"github.com/0typos/mimic/internal/profiles"
 )
 
 type Snapshot struct {

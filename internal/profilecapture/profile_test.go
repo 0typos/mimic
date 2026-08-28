@@ -8,7 +8,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/msmythe/mimic/internal/config"
+	"github.com/0typos/mimic/internal/config"
 )
 
 func TestWriteProfileCreatesLoadableFiles(t *testing.T) {

@@ -1,6 +1,6 @@
 [Unit]
 Description=Mimic fingerprint-aware compatibility proxy
-Documentation=https://github.com/msmythe/mimic
+Documentation=https://github.com/0typos/mimic
 After=network-online.target
 Wants=network-online.target
 

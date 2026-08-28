@@ -15,7 +15,7 @@ import (
 
 	"golang.org/x/net/http/httpguts"
 
-	"github.com/msmythe/mimic/internal/config"
+	"github.com/0typos/mimic/internal/config"
 )
 
 var profileNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)

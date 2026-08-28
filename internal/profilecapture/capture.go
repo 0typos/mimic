@@ -19,7 +19,7 @@ import (
 	"github.com/gopacket/gopacket/layers"
 	"github.com/gopacket/gopacket/pcapgo"
 
-	"github.com/msmythe/mimic/internal/fingerprint"
+	"github.com/0typos/mimic/internal/fingerprint"
 )
 
 const (
