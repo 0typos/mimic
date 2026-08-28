@@ -10,8 +10,8 @@
   },
   "devDependencies": {
     "@caido/sdk-backend": "0.58.2",
-    "@types/node": "24.13.3",
+    "@types/node": "26.3.0",
     "tsx": "4.23.12",
-    "typescript": "5.7.3"
+    "typescript": "7.0.2"
   }
 }
