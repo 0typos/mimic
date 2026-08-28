@@ -22,6 +22,23 @@ exact Python dependencies without a manually managed virtual environment.
 ./lab/mimic-lab down      # remove containers and network
 ```
 
+## Record the walkthroughs
+
+The README and tutorial terminal animations are generated from committed
+[asciinema](https://asciinema.org) casts. With the lab running:
+
+```sh
+./docs/tutorial/demos/record                 # all casts and GIFs
+./docs/tutorial/demos/record 02              # one walkthrough
+./docs/tutorial/demos/record --no-gif        # save casts only
+./docs/tutorial/demos/record --render        # re-render existing casts
+```
+
+The driver executes real lab commands and keeps every `.cast` and `.gif` under
+[`docs/tutorial/demos/`](../docs/tutorial/demos/); it never uploads a session.
+See the [recording guide](../docs/tutorial/demos/README.md) for dependencies and
+timing controls.
+
 Run `./lab/mimic-lab install` to make `mimic-lab` available from any directory.
 It creates a guarded symlink in `uv tool dir --bin`; `mimic-lab uninstall`
 removes only a symlink that points back to this checkout.

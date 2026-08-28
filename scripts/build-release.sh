@@ -57,8 +57,8 @@ for target in "${targets[@]}"; do
     "$repo_root/THIRD_PARTY_NOTICES.md" "$repo_root/config.example.toml" \
     "$repo_root/go.mod" "$repo_root/go.sum" "$repo_root/.dockerignore" \
     "$package_dir/"
-  cp -R "$repo_root/cmd" "$repo_root/internal" "$repo_root/lab" \
-    "$repo_root/docs" "$repo_root/packaging" "$package_dir/"
+  cp -R "$repo_root/assets" "$repo_root/cmd" "$repo_root/internal" \
+    "$repo_root/lab" "$repo_root/docs" "$repo_root/packaging" "$package_dir/"
   # Never package the generated tutorial CA private key from a local lab run.
   rm -rf "$package_dir/lab/.state"
   mkdir -p "$package_dir/integrations/caido"

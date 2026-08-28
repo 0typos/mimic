@@ -11,6 +11,12 @@ Allow 35–50 minutes for the complete tutorial. If you already ran the
 
 Use Mimic only with systems and traffic you are authorized to test.
 
+The terminal demonstrations in this guide are recordings of the same local
+lab commands. Each GIF links to a committed
+[asciinema](https://asciinema.org) cast that you can play in a real terminal;
+[`tutorial/demos/`](tutorial/demos/) contains the reproducible recording
+driver.
+
 By the end, you will be able to:
 
 - choose correctly between interception, Caido, Burp, tunnel, and SOCKS paths;
@@ -98,6 +104,10 @@ docker compose -f lab/compose.yaml ps
 ./lab/mimic-lab status
 ./lab/mimic-lab profiles
 ```
+
+![JA4 conformance, profiled HTTP, and intercepted HTTPS in the local lab](tutorial/demos/01-quickstart.gif)
+
+<sub>▶ [`01-quickstart.cast`](tutorial/demos/01-quickstart.cast) — the three-step quickstart against deterministic local origins.</sub>
 
 The lab's broad container CIDRs, self-signed origin trust, and intentionally old
 TLS server are isolated teaching concessions. Do not copy those values into a
@@ -196,6 +206,10 @@ docker compose -f lab/compose.yaml exec -T mimic \
 
 Live selection is intentionally not written back to TOML. A restart returns to
 `runtime.default_profile`.
+
+![Changing the live default while a more-specific host route still wins](tutorial/demos/02-profile-precedence.gif)
+
+<sub>▶ [`02-profile-precedence.cast`](tutorial/demos/02-profile-precedence.cast) — play the profile selection walkthrough with `asciinema play`.</sub>
 
 ## 5. Workflow A: use a regular browser directly
 
@@ -433,6 +447,10 @@ curl --noproxy "" --proxy http://127.0.0.1:18081 \
 
 The response reports TLS 1.0 and `tls_fallbacks` increases. The debug log shows
 the failed profile attempt followed by the bounded fallback.
+
+![Mimic trying the browser profile first and using an allowlisted TLS 1.0 fallback](tutorial/demos/03-legacy-fallback.gif)
+
+<sub>▶ [`03-legacy-fallback.cast`](tutorial/demos/03-legacy-fallback.cast) — the bounded compatibility retry and its status evidence.</sub>
 
 In a real config, keep the exception narrow:
 

@@ -50,6 +50,10 @@ The three checks show:
 3. An HTTPS request trusts only the lab CA for that command; Mimic intercepts
    it and creates a new profiled TLS connection to the modern origin.
 
+![The three-step Mimic lab quickstart](tutorial/demos/01-quickstart.gif)
+
+<sub>▶ [`01-quickstart.cast`](tutorial/demos/01-quickstart.cast) — play it with `asciinema play` for a real terminal session.</sub>
+
 You are now using the parts of Mimic that actually change an upstream
 fingerprint. A tunnel-only HTTP proxy or SOCKS connection does not do that.
 

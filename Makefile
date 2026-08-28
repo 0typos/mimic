@@ -1,4 +1,4 @@
-.PHONY: all audit audit-caido audit-go build caido check clean coverage fmt-check lab-check release test
+.PHONY: all audit audit-caido audit-go build caido check clean coverage demos demos-render fmt-check lab-check release test
 
 VERSION ?= dev
 COVERAGE_MIN ?= 80
@@ -45,6 +45,13 @@ lab-check:
 	./lab/mimic-lab --help >/dev/null
 	docker compose -f lab/compose.yaml config --quiet
 	bash -n lab/start-mimic.sh
+	bash -n docs/tutorial/demos/record
+
+demos:
+	./docs/tutorial/demos/record
+
+demos-render:
+	./docs/tutorial/demos/record --render
 
 release: check audit caido lab-check
 	./scripts/build-release.sh "$(VERSION)"

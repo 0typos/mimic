@@ -207,6 +207,19 @@ def intercept_request(url: str) -> str:
     )
 
 
+def print_identity(output: str) -> None:
+    """Print the origin fields that make the selected presentation visible."""
+    try:
+        response = json.loads(output)
+    except json.JSONDecodeError as error:
+        fail(f"origin returned invalid JSON: {error}")
+    if not isinstance(response, dict):
+        fail("origin returned a non-object response")
+    fields = ("protocol", "tls", "cipher", "user_agent")
+    summary = {field: response[field] for field in fields if field in response}
+    print(json.dumps(summary, indent=2), flush=True)
+
+
 def assert_contains(output: str, expected: str, label: str) -> None:
     if expected not in output:
         fail(f"{label}: expected {expected!r} in output:\n{output}")
@@ -308,20 +321,16 @@ def demo() -> None:
         "\n2/3  Send plaintext HTTP through Mimic and inspect its HTTP identity",
         flush=True,
     )
-    print(
-        http_request("http://default-origin:8080/inspect?via=quickstart"),
-        end="",
-        flush=True,
+    print_identity(
+        http_request("http://default-origin:8080/inspect?via=quickstart")
     )
 
     print(
         "\n3/3  Let Mimic intercept HTTPS and originate the upstream TLS connection",
         flush=True,
     )
-    print(
-        intercept_request("https://modern-origin:8443/inspect?via=quickstart"),
-        end="",
-        flush=True,
+    print_identity(
+        intercept_request("https://modern-origin:8443/inspect?via=quickstart")
     )
     print(
         "\nSuccess: JA4 conformance, profiled HTTP, and HTTPS interception worked.",

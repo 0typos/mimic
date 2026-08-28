@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+# Record focused Mimic lab walkthroughs as asciinema casts and render them with agg.
+#
+#   ./docs/tutorial/demos/record                 # record and render every demo
+#   ./docs/tutorial/demos/record 01 03           # record a subset
+#   ./docs/tutorial/demos/record --no-gif        # casts only
+#   ./docs/tutorial/demos/record --render        # render existing casts only
+#   ./docs/tutorial/demos/record --list
+set -euo pipefail
+
+HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+ROOT=$(cd "$HERE/../../.." && pwd)
+COLS=${COLS:-110}
+ROWS=${ROWS:-34}
+TYPE_DELAY=${TYPE_DELAY:-0.025}
+PRE_RUN=${PRE_RUN:-0.8}
+POST_RUN=${POST_RUN:-1.6}
+COMMENT_PAUSE=${COMMENT_PAUSE:-1.2}
+IDLE_LIMIT=${IDLE_LIMIT:-3}
+
+DEMOS=(
+  "01-quickstart          The three-step lab quickstart"
+  "02-profile-precedence  Live defaults and host routes"
+  "03-legacy-fallback     One allowlisted legacy TLS host"
+)
+
+type_cmd() {
+  local command=$1
+  printf '\033[1;32m$\033[0m '
+  local index
+  for ((index = 0; index < ${#command}; index++)); do
+    printf '%s' "${command:index:1}"
+    sleep "$TYPE_DELAY"
+  done
+  sleep "$PRE_RUN"
+  printf '\n'
+  eval "$command"
+  sleep "$POST_RUN"
+}
+
+say() {
+  printf '\n'
+  local line
+  for line in "$@"; do
+    printf '\033[2;36m# %s\033[0m\n' "$line"
+    sleep 0.3
+  done
+  sleep "$COMMENT_PAUSE"
+}
+
+demo_01_quickstart() {
+  say "One command proves the ClientHello, profiled HTTP, and intercepted HTTPS." \
+      "Every destination is a deterministic container inside the disposable lab."
+  type_cmd "./lab/mimic-lab demo"
+}
+
+demo_02_profile_precedence() {
+  docker compose -f lab/compose.yaml exec -T mimic \
+    mimic ctl -socket tcp://127.0.0.1:9090 use chrome-152-linux >/dev/null
+
+  say "The live default starts as Chrome. Change it without a daemon restart."
+  type_cmd "./lab/mimic-lab status | jq '{profile, connections, requests}'"
+  type_cmd "docker compose -f lab/compose.yaml exec -T mimic mimic ctl -socket tcp://127.0.0.1:9090 use lab-firefox | jq '{profile}'"
+
+  say "An unrouted host gets the live Firefox identity."
+  type_cmd "curl -sS --noproxy '' --proxy http://127.0.0.1:18080 http://default-origin:8080/inspect?workflow=cast | jq '{tls, user_agent, profile: .headers.\"X-Lab-Profile\"}'"
+
+  say "modern-origin has a Chrome route, so the narrower host rule still wins."
+  type_cmd "curl -sS --noproxy '' --proxy http://127.0.0.1:18081 --cacert lab/.state/mimic-ca.pem https://modern-origin:8443/inspect?workflow=cast | jq '{tls, user_agent}'"
+
+  say "Reset the session default when the comparison is over."
+  type_cmd "docker compose -f lab/compose.yaml exec -T mimic mimic ctl -socket tcp://127.0.0.1:9090 use chrome-152-linux | jq '{profile}'"
+}
+
+demo_03_legacy_fallback() {
+  docker compose -f lab/compose.yaml exec -T mimic \
+    mimic ctl -socket tcp://127.0.0.1:9090 use chrome-152-linux >/dev/null
+
+  say "Mimic tries the selected browser profile first. Only the allowlisted lab host" \
+      "may retry with the bounded legacy policy after an eligible TLS failure."
+  type_cmd "docker compose -f lab/compose.yaml exec -T mimic mimic probe -config /etc/mimic/config.toml -target legacy-origin:9443"
+
+  say "The intercepted request reaches this one origin with TLS 1.0."
+  type_cmd "curl -sS --noproxy '' --proxy http://127.0.0.1:18081 --cacert lab/.state/mimic-ca.pem https://legacy-origin:9443/inspect?workflow=cast | jq '{tls, cipher, user_agent}'"
+
+  say "The fallback is visible in daemon status; certificate verification stays separate."
+  type_cmd "./lab/mimic-lab status | jq '{profile, tls_fallbacks}'"
+}
+
+selected() {
+  local name=$1
+  if ((${#WANTED[@]} == 0)); then
+    return 0
+  fi
+  local prefix
+  for prefix in "${WANTED[@]}"; do
+    [[ $name == "$prefix"* ]] && return 0
+  done
+  return 1
+}
+
+render() {
+  local name=$1
+  agg --quiet --cols "$COLS" --rows "$ROWS" --font-size 14 \
+    "$HERE/$name.cast" "$HERE/$name.gif" >/dev/null
+}
+
+if [[ ${1:-} == --play ]]; then
+  cd "$ROOT"
+  function_name="demo_${2//-/_}"
+  "$function_name"
+  sleep 1
+  exit 0
+fi
+
+WANTED=()
+GIF=1
+RENDER_ONLY=0
+for argument in "$@"; do
+  case $argument in
+    --gif) GIF=1 ;;
+    --no-gif) GIF=0 ;;
+    --render) RENDER_ONLY=1 ;;
+    --list)
+      printf '%s\n' "${DEMOS[@]}"
+      exit 0
+      ;;
+    *) WANTED+=("$argument") ;;
+  esac
+done
+
+if ((GIF)) && ! command -v agg >/dev/null; then
+  echo "agg not found (cargo install --git https://github.com/asciinema/agg)" >&2
+  exit 1
+fi
+
+if ((RENDER_ONLY)); then
+  for entry in "${DEMOS[@]}"; do
+    name=${entry%% *}
+    selected "$name" || continue
+    [[ -f $HERE/$name.cast ]] || continue
+    echo "rendering $name"
+    render "$name"
+  done
+  exit 0
+fi
+
+for command in asciinema docker jq; do
+  command -v "$command" >/dev/null || {
+    echo "required command not found: $command" >&2
+    exit 1
+  }
+done
+
+cd "$ROOT"
+./lab/mimic-lab status >/dev/null 2>&1 || {
+  echo "lab is not ready; run: ./lab/mimic-lab up" >&2
+  exit 1
+}
+
+for entry in "${DEMOS[@]}"; do
+  name=${entry%% *}
+  selected "$name" || continue
+  title=$(sed -E 's/^[^[:space:]]+[[:space:]]+//' <<<"$entry")
+  echo "recording $name"
+  asciinema rec --overwrite --quiet --cols "$COLS" --rows "$ROWS" \
+    --idle-time-limit "$IDLE_LIMIT" --title "Mimic — $title" --env "" \
+    -c "bash '$HERE/record' --play '$name'" "$HERE/$name.cast"
+  ((GIF)) && render "$name"
+done
