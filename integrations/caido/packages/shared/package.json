@@ -12,6 +12,6 @@
   },
   "devDependencies": {
     "@caido/sdk-shared": "0.2.2",
-    "typescript": "5.7.3"
+    "typescript": "7.0.2"
   }
 }

@@ -9,11 +9,11 @@
   },
   "devDependencies": {
     "@caido/sdk-frontend": "0.58.2",
-    "@types/node": "24.13.3",
+    "@types/node": "26.4.0",
     "mimic-caido-shared": "workspace:*",
     "tsx": "4.23.12",
-    "typescript": "5.7.3",
-    "vue": "3.5.24",
-    "vue-tsc": "3.1.2"
+    "typescript": "7.0.2",
+    "vue": "3.5.42",
+    "vue-tsc": "3.3.11"
   }
 }
