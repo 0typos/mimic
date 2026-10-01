@@ -9,10 +9,10 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@caido/sdk-backend": "0.58.2",
-    "@types/node": "24.13.3",
+    "@caido/sdk-backend": "0.58.3",
+    "@types/node": "26.6.3",
     "mimic-caido-shared": "workspace:*",
-    "tsx": "4.23.12",
-    "typescript": "5.7.3"
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
   }
 }
