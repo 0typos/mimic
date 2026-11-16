@@ -1,14 +1,20 @@
 packages:
   - packages/*
 
+# Security pins for transitive dependencies of @caido-community/dev 0.1.7 (the
+# latest release), which pins vulnerable versions with no upstream fix yet.
 overrides:
-  cookie: 0.7.2
-  esbuild: 0.25.12
-  glob: 12.0.0
-  qs: 6.15.2
-  sharp: 0.35.0
-  vite: 6.4.3
-  ws: 8.21.0
+  body-parser: 2.4.0 # GHSA-27r3-jxmh-p828: express 5.0.0 pins body-parser <2.4.0.
+  cookie: 0.7.2 # express 5.0.0 pins a cookie release that accepts out-of-bounds name/path/domain characters.
+  esbuild: 0.25.12 # vite 6 and tsup pin an esbuild whose dev server answers cross-origin requests.
+  fast-uri: 3.1.9 # ajv via @caido/plugin-manifest pins fast-uri <3.1.9 (several advisories).
+  glob: 14.0.6 # caido-dev pins glob 11.0.1; glob <14.0.2 and its minimatch/brace-expansion are vulnerable.
+  proxy-addr: 2.0.8 # critical advisory in proxy-addr <2.0.8 via express 5.0.0.
+  qs: 6.17.1 # body-parser pins qs <6.16.1 (several advisories).
+  sharp: 0.35.5 # caido-dev's sharp ^0.34.5 bundles a vulnerable librsvg (GHSA-wq5f-xc86-pv6w).
+  vite: 6.4.6 # caido-dev pins vite 6.0.7; vite <=6.4.3 is vulnerable (GHSA-587h-7wmj-h5pm).
+  ws: 8.21.0 # caido-dev pins ws 8.18.0 (fragment memory-exhaustion DoS, uninitialized memory disclosure).
+  zod: 4.6.7 # caido-dev pins zod 3.24.1; no 3.x release fixes GHSA-mrhx-c7xc-m3w5.
 
 allowBuilds:
   esbuild: true
