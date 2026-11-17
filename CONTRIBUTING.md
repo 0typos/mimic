@@ -5,7 +5,7 @@ documentation, and defensive research use cases.
 
 ## Development setup
 
-- Go 1.25.13 or newer;
+- Go 1.27.4 or newer;
 - Node.js 22.13 or newer plus Corepack for Caido plugin work;
 - a C toolchain for race-enabled Go tests.
 

@@ -80,7 +80,7 @@ store. Continue with the [five-minute quickstart](docs/quickstart.md) or the
 ## Build
 
 Release archives contain one static binary and checksums for Linux and macOS.
-Until the first public release, build from source with Go 1.25.13 or newer:
+Until the first public release, build from source with Go 1.27.4 or newer:
 
 ```console
 git clone https://github.com/0typos/mimic.git

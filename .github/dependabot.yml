@@ -15,6 +15,10 @@ updates:
     groups:
       caido-dependencies:
         patterns: ["*"]
+    ignore:
+      # vue-tsc (3.3.x) still loads typescript/lib/tsc, which TypeScript 7 no longer ships.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
