@@ -8,12 +8,12 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "devDependencies": {
-    "@caido/sdk-frontend": "0.58.3",
-    "@types/node": "26.6.3",
+    "@caido/sdk-frontend": "0.59.1",
+    "@types/node": "26.6.6",
     "mimic-caido-shared": "workspace:*",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
-    "vue": "3.5.43",
-    "vue-tsc": "3.3.11"
+    "vue": "3.5.45",
+    "vue-tsc": "3.3.14"
   }
 }
